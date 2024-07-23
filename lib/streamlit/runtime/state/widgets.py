@@ -14,8 +14,15 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import textwrap
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Final, Mapping
 
+from typing_extensions import TypeAlias
+
+from streamlit.proto.Common_pb2 import ChatInputValue as ChatInputValueProto
+from streamlit.proto.Common_pb2 import StringTriggerValue as StringTriggerValueProto
+from streamlit.proto.WidgetStates_pb2 import WidgetState, WidgetStates
 from streamlit.runtime.state.common import (
     RegisterWidgetResult,
     T,
@@ -31,6 +38,53 @@ from streamlit.runtime.state.common import (
 
 if TYPE_CHECKING:
     from streamlit.runtime.scriptrunner import ScriptRunContext
+
+
+ElementType: TypeAlias = str
+
+# NOTE: We use this table to start with a best-effort guess for the value_type
+# of each widget. Once we actually receive a proto for a widget from the
+# frontend, the guess is updated to be the correct type. Unfortunately, we're
+# not able to always rely on the proto as the type may be needed earlier.
+# Thankfully, in these cases (when value_type == "trigger_value"), the static
+# table here being slightly inaccurate should never pose a problem.
+ELEMENT_TYPE_TO_VALUE_TYPE: Final[Mapping[ElementType, ValueFieldName]] = (
+    MappingProxyType(
+        {
+            "button": "trigger_value",
+            "button_group": "int_array_value",
+            "camera_input": "file_uploader_state_value",
+            "checkbox": "bool_value",
+            "chat_input": "chat_input_value",
+            "color_picker": "string_value",
+            "component_instance": "json_value",
+            "data_editor": "string_value",
+            "dataframe": "string_value",
+            "date_input": "string_array_value",
+            "download_button": "trigger_value",
+            "file_uploader": "file_uploader_state_value",
+            "multiselect": "int_array_value",
+            "number_input": "double_value",
+            "plotly_chart": "string_value",
+            "radio": "int_value",
+            "selectbox": "int_value",
+            "slider": "double_array_value",
+            "text_area": "string_value",
+            "text_input": "string_value",
+            "time_input": "string_value",
+            "vega_lite_chart": "string_value",
+        }
+    )
+)
+
+
+class NoValue:
+    """Return this from DeltaGenerator.foo_widget() when you want the st.foo_widget()
+    call to return None. This is needed because `DeltaGenerator._enqueue`
+    replaces `None` with a `DeltaGenerator` (for use in non-widget elements).
+    """
+
+    pass
 
 
 def register_widget(
@@ -133,3 +187,91 @@ def register_widget_from_metadata(
     user_key = user_key_from_element_id(widget_id)
 
     return ctx.session_state.register_widget(metadata, user_key)
+
+
+def coalesce_widget_states(
+    old_states: WidgetStates | None, new_states: WidgetStates | None
+) -> WidgetStates | None:
+    """Coalesce an older WidgetStates into a newer one, and return a new
+    WidgetStates containing the result.
+
+    For most widget values, we just take the latest version.
+
+    However, any trigger_values (which are set by buttons) that are True in
+    `old_states` will be set to True in the coalesced result, so that button
+    presses don't go missing.
+    """
+    if not old_states and not new_states:
+        return None
+    elif not old_states:
+        return new_states
+    elif not new_states:
+        return old_states
+
+    states_by_id: dict[str, WidgetState] = {
+        wstate.id: wstate for wstate in new_states.widgets
+    }
+
+    trigger_value_types = [
+        ("trigger_value", False),
+        ("string_trigger_value", StringTriggerValueProto(data=None)),
+        ("chat_input_value", ChatInputValueProto(data=None)),
+    ]
+    for old_state in old_states.widgets:
+        for trigger_value_type, unset_value in trigger_value_types:
+            if (
+                old_state.WhichOneof("value") == trigger_value_type
+                and getattr(old_state, trigger_value_type) != unset_value
+            ):
+                new_trigger_val = states_by_id.get(old_state.id)
+                # It should nearly always be the case that new_trigger_val is None
+                # here as trigger values are deleted from the client's WidgetStateManager
+                # as soon as a rerun_script BackMsg is sent to the server. Since it's
+                # impossible to test that the client sends us state in the expected
+                # format in a unit test, we test for this behavior in
+                # e2e_playwright/test_fragment_queue_test.py
+                if not new_trigger_val or (
+                    # Ensure the corresponding new_state is also a trigger;
+                    # otherwise, a widget that was previously a button/chat_input but no
+                    # longer is could get a bad value.
+                    new_trigger_val.WhichOneof("value") == trigger_value_type
+                    # We only want to take the value of old_state if new_trigger_val is
+                    # unset as the old value may be stale if a newer one was entered.
+                    and getattr(new_trigger_val, trigger_value_type) == unset_value
+                ):
+                    states_by_id[old_state.id] = old_state
+
+    coalesced = WidgetStates()
+    coalesced.widgets.extend(states_by_id.values())
+
+    return coalesced
+
+
+def _build_duplicate_widget_message(
+    widget_func_name: str, user_key: str | None = None
+) -> str:
+    if user_key is not None:
+        message = textwrap.dedent(
+            """
+            There are multiple widgets with the same `key='{user_key}'`.
+
+            To fix this, please make sure that the `key` argument is unique for each
+            widget you create.
+            """
+        )
+    else:
+        message = textwrap.dedent(
+            """
+            There are multiple identical `st.{widget_type}` widgets with the
+            same generated key.
+
+            When a widget is created, it's assigned an internal key based on
+            its structure. Multiple widgets with an identical structure will
+            result in the same internal key, which causes this error.
+
+            To fix this error, please pass a unique `key` argument to
+            `st.{widget_type}`.
+            """
+        )
+
+    return message.strip("\n").format(widget_type=widget_func_name, user_key=user_key)

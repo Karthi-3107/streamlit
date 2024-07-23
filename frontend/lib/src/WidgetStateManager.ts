@@ -33,6 +33,7 @@ import {
   Button as SubmitButtonProto,
   WidgetState,
   WidgetStates,
+  ChatInputValue,
 } from "./proto"
 
 export interface Source {
@@ -300,6 +301,18 @@ export class WidgetStateManager {
     this.deleteWidgetState(widget.id)
   }
 
+  public setChatInputValue(
+    widget: WidgetInfo,
+    value: string,
+    source: Source,
+    fragmentId: string | undefined
+  ): void {
+    this.createWidgetState(widget, source).chatInputValue = new ChatInputValue(
+      { data: value }
+    )
+    this.onWidgetValueChanged(widget.formId, source, fragmentId)
+    this.deleteWidgetState(widget.id)
+  }
   /**
    * Sets the trigger value for the given widget ID to true, sends a rerunScript message
    * to the server, and then immediately unsets the trigger value.
