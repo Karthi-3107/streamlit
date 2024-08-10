@@ -317,7 +317,7 @@ function ChatInput({
   }
 
   const dropHandler = createDropHandler({
-    acceptMultipleFiles: true,
+    acceptMultipleFiles: element.acceptFile === "multiple",
     uploadClient: uploadClient,
     uploadFile: createUploadFileHandler({
       getNextLocalFileId,
@@ -386,7 +386,7 @@ function ChatInput({
   })
   const { getRootProps, getInputProps } = useDropzone({
     onDrop: dropHandler,
-    multiple: true,
+    multiple: element.acceptFile === "multiple",
     accept: element.fileType,
   })
 
