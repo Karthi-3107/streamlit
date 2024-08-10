@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Literal, TypedDict, cast
+from typing import TYPE_CHECKING, Literal, Sequence, TypedDict, cast
 
 from streamlit import runtime
 from streamlit.delta_generator_singletons import get_dg_singleton_instance
@@ -54,6 +54,15 @@ if TYPE_CHECKING:
 class ChatInputValue(TypedDict):
     text: str
     files: list[UploadedFile]
+
+
+TYPE_PAIRS = [
+    (".jpg", ".jpeg"),
+    (".mpg", ".mpeg"),
+    (".mp4", ".mpeg4"),
+    (".tif", ".tiff"),
+    (".htm", ".html"),
+]
 
 
 class PresetNames(str, Enum):
@@ -301,6 +310,8 @@ class ChatMixin:
         max_chars: int | None = None,
         accept_file: bool = False,
         disabled: bool = False,
+        file_type: str | Sequence[str] | None = None,
+        # TODO [kajarenc] https://github.com/python/mypy/issues/4020#issuecomment-737600893 check does it relevant here
         on_submit: WidgetCallback | None = None,
         args: WidgetArgs | None = None,
         kwargs: WidgetKwargs | None = None,
@@ -328,6 +339,8 @@ class ChatMixin:
 
         disabled : bool
             Whether the chat input should be disabled. Defaults to ``False``.
+
+        file_type : str or list[str] or None
 
         on_submit : callable
             An optional callback invoked when the chat input's value is submitted.
@@ -398,6 +411,25 @@ class ChatMixin:
             max_chars=max_chars,
         )
 
+        if file_type:
+            if isinstance(file_type, str):
+                file_type = [file_type]
+
+            # May need a regex or a library to validate file types are valid
+            # extensions.
+            file_type = [
+                file_type_entry if file_type_entry[0] == "." else f".{file_type_entry}"
+                for file_type_entry in file_type
+            ]
+
+            file_type = [t.lower() for t in file_type]
+
+            for x, y in TYPE_PAIRS:
+                if x in file_type and y not in file_type:
+                    file_type.append(y)
+                if y in file_type and x not in file_type:
+                    file_type.append(x)
+
         # It doesn't make sense to create a chat input inside a form.
         # We throw an error to warn the user about this.
         # We omit this check for scripts running outside streamlit, because
@@ -431,6 +463,8 @@ class ChatMixin:
         chat_input_proto.default = default
 
         chat_input_proto.accept_file = accept_file
+
+        chat_input_proto.file_type[:] = file_type if file_type is not None else []
 
         serde = ChatInputSerde(accept_files=accept_file)
         widget_state = register_widget(
