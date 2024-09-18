@@ -43,7 +43,6 @@ from streamlit.runtime.state import (
     WidgetKwargs,
     register_widget,
 )
-from streamlit.runtime.state.common import save_for_app_testing
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 from streamlit.string_util import is_emoji, validate_material_icon
 
