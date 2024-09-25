@@ -40,6 +40,12 @@ export const StyledChatInput = styled.div(({ theme }) => {
     borderRadius: theme.radii.default,
     display: "flex",
     alignItems: "center",
+    border: `${theme.sizes.borderWidth} solid`,
+    borderColor: theme.colors.transparent,
+
+    ":focus-within": {
+      borderColor: theme.colors.primary,
+    },
   }
 })
 
@@ -108,3 +114,18 @@ export const StyledInputInstructionsContainer = styled.div(({ theme }) => ({
   // and some additional margin between the icon and the text (spacing.sm).
   right: `calc(${theme.iconSizes.xl} + 2 * ${theme.spacing.sm} + ${theme.spacing.sm})`,
 }))
+
+export interface StyledVerticalDividerProps {
+  color?: string
+}
+
+export const StyledVerticalDivider = styled.div<StyledVerticalDividerProps>(
+  ({ theme, color }) => {
+    return {
+      height: "1.125rem",
+      width: theme.sizes.borderWidth,
+      marginRight: theme.spacing.xs,
+      backgroundColor: color ?? theme.colors.fadedText20,
+    }
+  }
+)
