@@ -72,6 +72,14 @@ export const StyledUploadedFiles = styled.div(({ theme }) => ({
   paddingRight: theme.spacing.lg,
 }))
 
+export const StyledChatUploadedFiles = styled.div(({ theme }) => ({
+  left: 0,
+  right: 0,
+  lineHeight: theme.lineHeights.tight,
+  paddingTop: theme.spacing.md,
+  paddingLeft: theme.spacing.sm,
+}))
+
 export const StyledUploadedFilesList = styled.ul(({ theme }) => ({
   listStyleType: "none",
   margin: theme.spacing.none,
@@ -88,6 +96,14 @@ export const StyledUploadedFileData = styled.div(({ theme }) => ({
   alignItems: "baseline",
   flex: 1,
   paddingLeft: theme.spacing.lg,
+  overflow: "hidden",
+}))
+
+export const StyledChatUploadedFileData = styled.div(({ theme }) => ({
+  display: "flex",
+  alignItems: "baseline",
+  flex: 1,
+  paddingLeft: theme.spacing.twoXS,
   overflow: "hidden",
 }))
 

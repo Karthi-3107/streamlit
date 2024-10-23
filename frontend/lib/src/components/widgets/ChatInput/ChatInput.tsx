@@ -514,6 +514,7 @@ function ChatInput({
           items={[...files]}
           pageSize={1}
           onDelete={deleteFile}
+          surface="chat"
           resetOnAdd
           style={{
             paddingLeft: 0,
