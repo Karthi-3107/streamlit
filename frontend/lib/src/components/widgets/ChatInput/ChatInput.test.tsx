@@ -19,8 +19,10 @@ import React from "react"
 import { fireEvent, screen } from "@testing-library/react"
 
 import { render } from "@streamlit/lib/src/test_util"
-import { ChatInput as ChatInputProto } from "@streamlit/lib/src/proto"
-import { FileURLs as FileURLsProto } from "@streamlit/lib/src/proto"
+import {
+  ChatInput as ChatInputProto,
+  FileURLs as FileURLsProto,
+} from "@streamlit/lib/src/proto"
 import { WidgetStateManager } from "@streamlit/lib/src/WidgetStateManager"
 
 import ChatInput, { Props } from "./ChatInput"
