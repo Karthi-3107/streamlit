@@ -122,7 +122,7 @@ export interface StyledVerticalDividerProps {
 export const StyledVerticalDivider = styled.div<StyledVerticalDividerProps>(
   ({ theme, color }) => {
     return {
-      height: "1.125rem",
+      height: theme.spacing.xl,
       width: theme.sizes.borderWidth,
       marginRight: theme.spacing.xs,
       backgroundColor: color ?? theme.colors.fadedText20,
