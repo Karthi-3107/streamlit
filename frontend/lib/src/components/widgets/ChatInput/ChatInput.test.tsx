@@ -25,9 +25,9 @@ import {
   IChatInputValue,
 } from "@streamlit/lib/src/proto"
 import { WidgetStateManager } from "@streamlit/lib/src/WidgetStateManager"
+import { UploadFileInfo } from "@streamlit/lib/src/components/widgets/FileUploader/UploadFileInfo"
 
 import ChatInput, { Props } from "./ChatInput"
-import { UploadFileInfo } from "../FileUploader/UploadFileInfo"
 
 const getProps = (
   elementProps: Partial<ChatInputProto> = {},
