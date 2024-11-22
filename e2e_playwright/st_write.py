@@ -46,7 +46,6 @@ class ClassWithReprHtml:
         return "This <b>HTML tag</b> is also not escaped!"
 
 
-st.write(ClassWithReprHtml())
 st.write(ClassWithReprHtml(), unsafe_allow_html=True)
 
 st.write(100)
@@ -133,6 +132,8 @@ class ExampleClass:
 
 
 st.write(ExampleClass)
+
+st.write(ClassWithReprHtml())
 
 st.subheader("st.write(exception)")
 
