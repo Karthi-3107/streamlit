@@ -89,10 +89,9 @@ class StreamlitWriteTest(unittest.TestCase):
             def _repr_html_(self):
                 return "hello **world**"
 
-        with (
-            patch("streamlit.delta_generator.DeltaGenerator.html") as p1,
-            patch("streamlit.delta_generator.DeltaGenerator.help") as p2,
-        ):
+        with patch("streamlit.delta_generator.DeltaGenerator.html") as p1, patch(
+            "streamlit.delta_generator.DeltaGenerator.help"
+        ) as p2:
             obj = FakeHTMLable()
             st.write(obj)
 
