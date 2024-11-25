@@ -18,7 +18,8 @@ import datetime
 import json
 import os
 from contextlib import contextmanager
-from typing import TYPE_CHECKING
+from functools import wraps
+from typing import TYPE_CHECKING, Callable
 
 if TYPE_CHECKING:
     from playwright.sync_api import Page
@@ -86,3 +87,13 @@ def measure_performance(page: Page, *, cpu_throttling_rate: int | None = None):
                 },
                 f,
             )
+
+
+def with_performance(test_func: Callable, *, cpu_throttling_rate: int | None = None):
+    @wraps(test_func)
+    def wrapper(*args, **kwargs):
+        page = kwargs.get("page") or kwargs.get("app") or args[0]
+        with measure_performance(page, cpu_throttling_rate=cpu_throttling_rate):
+            test_func(*args, **kwargs)
+
+    return wrapper
