@@ -72,6 +72,7 @@ def measure_performance(page: Page, *, cpu_throttling_rate: int | None = None):
         long_tasks = client.send(
             "Runtime.evaluate", {"expression": "JSON.stringify(window.longTasks)"}
         )["result"]["value"]
+        parsed_long_tasks = json.loads(long_tasks)
 
         # Ensure the directory exists
         os.makedirs("./performance/results", exist_ok=True)
@@ -81,7 +82,7 @@ def measure_performance(page: Page, *, cpu_throttling_rate: int | None = None):
             json.dump(
                 {
                     "metrics": metrics_response["metrics"],
-                    "longTasks": long_tasks,
+                    "longTasks": parsed_long_tasks,
                 },
                 f,
             )
