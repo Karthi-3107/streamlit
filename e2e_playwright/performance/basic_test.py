@@ -15,12 +15,12 @@
 from playwright.sync_api import Page
 
 from e2e_playwright.conftest import wait_for_app_run
-from e2e_playwright.shared.performance import measure_performance
+from e2e_playwright.shared.performance import with_performance
 
 
+@with_performance()
 def test_recalculations(app: Page):
-    with measure_performance(app):
-        slider = app.get_by_test_id("stSlider").nth(0)
-        slider.hover()
-        app.mouse.down()
-        wait_for_app_run(app)
+    slider = app.get_by_test_id("stSlider").nth(0)
+    slider.hover()
+    app.mouse.down()
+    wait_for_app_run(app)

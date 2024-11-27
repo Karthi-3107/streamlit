@@ -52,12 +52,7 @@ function handleEntries(list) {
 }
 
 new PerformanceObserver(handleEntries).observe({
-    entryTypes: ['longtask', 'measure', 'mark', 'navigation', 'paint'],
-});
-
-new PerformanceObserver(handleEntries).observe({
-    type: 'long-animation-frame',
-    buffered: true,
+    entryTypes: ['longtask', 'measure', 'mark', 'navigation', 'paint', 'long-animation-frame'],
 });
 """
 
