@@ -329,13 +329,12 @@ jstestcoverage:
 	cd frontend; TESTPATH=$(TESTPATH) yarn run testcoverage
 
 .PHONY: playwright
-# Run playwright E2E tests (without custom component + performance tests).
+# Run playwright E2E tests (without custom component tests).
 custom_components_test_folder = ./custom_components
-performance_test_folder = ./performance
 playwright:
 	cd e2e_playwright; \
 	rm -rf ./test-results; \
-	pytest --ignore ${custom_components_test_folder} --ignore ${performance_test_folder} --browser webkit --browser chromium --browser firefox --video retain-on-failure --screenshot only-on-failure --output ./test-results/ -n auto --reruns 1 --reruns-delay 1 --rerun-except "Missing snapshot" --durations=5 -r aR -v
+	pytest --ignore ${custom_components_test_folder} --browser webkit --browser chromium --browser firefox --video retain-on-failure --screenshot only-on-failure --output ./test-results/ -n auto --reruns 1 --reruns-delay 1 --rerun-except "Missing snapshot" --durations=5 -r aR -v
 .PHONY: playwright-custom-components
 # Run playwright custom component E2E tests.
 playwright-custom-components:
@@ -350,13 +349,6 @@ playwright-custom-components:
 		pip install $${pip_args}; \
 	fi; \
 	pytest ${custom_components_test_folder} --browser webkit --browser chromium --browser firefox --video retain-on-failure --screenshot only-on-failure --output ./test-results/ -n auto --reruns 1 --reruns-delay 1 --rerun-except "Missing snapshot" --durations=5 -r aR -v
-
-.PHONY: playwright-performance
-# Run playwright performance tests.
-playwright-performance:
-	cd e2e_playwright; \
-	rm -rf ./test-results; \
-	pytest ${performance_test_folder} --browser chromium --video retain-on-failure --screenshot only-on-failure --output ./test-results/ -n auto --reruns 1 --reruns-delay 1 --durations=5 -r aR -v
 
 .PHONY: update-snapshots
 # Update e2e playwright snapshots based on the latest completed CI run.
