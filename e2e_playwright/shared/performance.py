@@ -49,7 +49,10 @@ new PerformanceObserver((list) => {
         }
         window.__capturedTraces[entry.entryType].push(entry);
     }
-}).observe({entryTypes: ['longtask', 'measure', 'mark', 'paint']});
+}).observe({
+    entryTypes: ['longtask', 'measure', 'mark', 'paint'],
+    buffered: true,
+});
 """
 
 GET_CAPTURED_TRACES_SCRIPT = """
