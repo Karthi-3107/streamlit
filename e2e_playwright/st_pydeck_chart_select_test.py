@@ -279,6 +279,7 @@ def test_pydeck_chart_multiselect_has_consistent_visuals(
     )
 
 
+@with_performance()
 @pytest.mark.only_browser("chromium")
 def test_pydeck_chart_selection_state_remains_after_unmounting(
     app: Page, assert_snapshot: ImageCompareFunction

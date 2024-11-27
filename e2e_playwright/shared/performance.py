@@ -67,7 +67,9 @@ JSON.stringify(window.__capturedTraces)
 
 
 @contextmanager
-def measure_performance(page: Page, *, cpu_throttling_rate: int | None = None):
+def measure_performance(
+    page: Page, *, test_name: str, cpu_throttling_rate: int | None = None
+):
     """
     Measure the performance of the page using the native performance API from
     Chrome DevTools Protocol.
@@ -99,7 +101,7 @@ def measure_performance(page: Page, *, cpu_throttling_rate: int | None = None):
 
         timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
 
-        with open(f"./performance/results/performance_{timestamp}.json", "w") as f:
+        with open(f"./performance/results/{timestamp}_{test_name}.json", "w") as f:
             json.dump(
                 {
                     "metrics": metrics_response["metrics"],
@@ -136,7 +138,11 @@ def with_performance(*, cpu_throttling_rate: int | None = None):
                 or kwargs.get("app")
                 or args[0]
             )
-            with measure_performance(page, cpu_throttling_rate=cpu_throttling_rate):
+            with measure_performance(
+                page,
+                test_name=test_func.__name__,
+                cpu_throttling_rate=cpu_throttling_rate,
+            ):
                 test_func(*args, **kwargs)
 
         return wrapper
