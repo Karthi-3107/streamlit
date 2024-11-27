@@ -74,6 +74,8 @@ import {
   logError,
   logMessage,
   Logo,
+  mark,
+  measure,
   Navigation,
   NewSession,
   notNullOrUndefined,
@@ -461,6 +463,7 @@ export class App extends PureComponent<Props, State> {
     // "Can't call setState on a component that is not yet mounted." error.
     this.initializeConnectionManager()
 
+    mark(this.state.scriptRunState)
     this.hostCommunicationMgr.sendMessageToHost({
       type: "SCRIPT_RUN_STATE_CHANGED",
       scriptRunState: this.state.scriptRunState,
@@ -512,6 +515,16 @@ export class App extends PureComponent<Props, State> {
       window.prerenderReady = true
     }
     if (this.state.scriptRunState !== prevState.scriptRunState) {
+      mark(this.state.scriptRunState)
+
+      if (this.state.scriptRunState === ScriptRunState.NOT_RUNNING) {
+        measure(
+          "script-run-cycle",
+          ScriptRunState.RUNNING,
+          ScriptRunState.NOT_RUNNING
+        )
+      }
+
       this.hostCommunicationMgr.sendMessageToHost({
         type: "SCRIPT_RUN_STATE_CHANGED",
         scriptRunState: this.state.scriptRunState,

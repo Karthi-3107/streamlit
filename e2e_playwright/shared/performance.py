@@ -42,6 +42,10 @@ def measure_performance(page: Page, *, cpu_throttling_rate: int | None = None):
     Measure the performance of the page using the native performance API from
     Chrome DevTools Protocol.
     @see https://github.com/puppeteer/puppeteer/blob/main/docs/api/puppeteer.page.metrics.md
+
+    Args:
+        page (Page): The page to measure performance on.
+        cpu_throttling_rate (int | None, optional): Throttling rate as a slowdown factor (1 is no throttle, 2 is 2x slowdown, etc). Defaults to None.
     """
     with with_cdp_session(page) as client:
         if cpu_throttling_rate is not None:
@@ -49,18 +53,21 @@ def measure_performance(page: Page, *, cpu_throttling_rate: int | None = None):
 
         client.send("Performance.enable")
 
-        # Observe long tasks with PerformanceObserver
+        # Observe long tasks, measure, marks, and paints with PerformanceObserver
         # @see https://developer.mozilla.org/en-US/docs/Web/API/PerformanceObserver
         client.send(
             "Runtime.evaluate",
             {
                 "expression": """
-                window.longTasks = [];
+                window.__capturedTraces = {};
 
                 new PerformanceObserver((list) => {
                     const entries = list.getEntries();
                     for (const entry of entries) {
-                        window.longTasks.push(entry);
+                        if (!window.__capturedTraces[entry.entryType]) {
+                            window.__capturedTraces[entry.entryType] = [];
+                        }
+                        window.__capturedTraces[entry.entryType].push(entry);
                     }
                 }).observe({entryTypes: ['longtask', 'measure', 'mark', 'paint']});
                 """
@@ -70,10 +77,11 @@ def measure_performance(page: Page, *, cpu_throttling_rate: int | None = None):
         yield
 
         metrics_response = client.send("Performance.getMetrics")
-        long_tasks = client.send(
-            "Runtime.evaluate", {"expression": "JSON.stringify(window.longTasks)"}
+        captured_traces = client.send(
+            "Runtime.evaluate",
+            {"expression": "JSON.stringify(window.__capturedTraces)"},
         )["result"]["value"]
-        parsed_long_tasks = json.loads(long_tasks)
+        parsed_captured_traces = json.loads(captured_traces)
 
         # Ensure the directory exists
         os.makedirs("./performance/results", exist_ok=True)
@@ -83,22 +91,42 @@ def measure_performance(page: Page, *, cpu_throttling_rate: int | None = None):
             json.dump(
                 {
                     "metrics": metrics_response["metrics"],
-                    "longTasks": parsed_long_tasks,
+                    "capturedTraces": parsed_captured_traces,
                 },
                 f,
             )
 
 
-def with_performance(test_func: Callable, *, cpu_throttling_rate: int | None = None):
-    @wraps(test_func)
-    def wrapper(*args, **kwargs):
-        page = (
-            kwargs.get("themed_app")
-            or kwargs.get("page")
-            or kwargs.get("app")
-            or args[0]
-        )
-        with measure_performance(page, cpu_throttling_rate=cpu_throttling_rate):
-            test_func(*args, **kwargs)
+def with_performance(*, cpu_throttling_rate: int | None = None):
+    """
+    A decorator to measure the performance of a test function.
 
-    return wrapper
+    Args:
+        cpu_throttling_rate (int | None, optional): Throttling rate as a slowdown factor (1 is no throttle, 2 is 2x slowdown, etc). Defaults to None.
+
+    Returns:
+        Callable: The decorated test function with performance measurement.
+    """
+
+    def decorator(test_func: Callable):
+        @wraps(test_func)
+        def wrapper(*args, **kwargs):
+            """
+            Wrapper function to measure performance.
+
+            Args:
+                *args: Positional arguments for the test function.
+                **kwargs: Keyword arguments for the test function.
+            """
+            page = (
+                kwargs.get("themed_app")
+                or kwargs.get("page")
+                or kwargs.get("app")
+                or args[0]
+            )
+            with measure_performance(page, cpu_throttling_rate=cpu_throttling_rate):
+                test_func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator

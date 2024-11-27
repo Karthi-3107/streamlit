@@ -149,3 +149,9 @@ export {
 } from "./util/utils"
 export { WidgetStateManager, createFormsData } from "./WidgetStateManager"
 export type { FormsData } from "./WidgetStateManager"
+export {
+  mark,
+  measure,
+  type StPerformanceMetric,
+  type StPerformanceMark,
+} from "./util/performance"

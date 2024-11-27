@@ -313,7 +313,7 @@ def test_pydeck_chart_selection_state_remains_after_unmounting(
     )
 
 
-@with_performance
+@with_performance()
 @pytest.mark.only_browser("chromium")
 def test_pydeck_chart_selection_callback(app: Page):
     """
