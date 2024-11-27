@@ -21,17 +21,15 @@ from e2e_playwright.shared.app_utils import (
     click_checkbox,
     click_toggle,
 )
-from e2e_playwright.shared.performance import measure_performance
+from e2e_playwright.shared.performance import with_performance
 
 
+@with_performance()
 def test_form_performance(app: Page):
-    # Get the first form:
     form_1 = app.get_by_test_id("stForm").nth(0)
-    # Write into the text area and measure its performance
-    with measure_performance(app):
-        form_1.get_by_test_id("stTextArea").locator("textarea").fill("bar")
-        form_1.get_by_test_id("stFormSubmitButton").last.click()
-        wait_for_app_run(app)
+    form_1.get_by_test_id("stTextArea").locator("textarea").fill("bar")
+    form_1.get_by_test_id("stFormSubmitButton").last.click()
+    wait_for_app_run(app)
 
 
 def change_widget_values(app: Page):

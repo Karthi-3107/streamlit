@@ -92,11 +92,11 @@ def measure_performance(
         parsed_captured_traces = json.loads(captured_traces)
 
         # Ensure the directory exists
-        os.makedirs("./performance/results", exist_ok=True)
+        os.makedirs("./performance-results", exist_ok=True)
 
         timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
 
-        with open(f"./performance/results/{timestamp}_{test_name}.json", "w") as f:
+        with open(f"./performance-results/{timestamp}_{test_name}.json", "w") as f:
             json.dump(
                 {
                     "metrics": metrics_response["metrics"],
