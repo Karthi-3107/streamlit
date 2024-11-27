@@ -41,7 +41,7 @@ def with_cdp_session(page: Page):
 CAPTURE_TRACES_SCRIPT = """
 window.__capturedTraces = {};
 
-new PerformanceObserver((list) => {
+function handleEntries(list) {
     const entries = list.getEntries();
     for (const entry of entries) {
         if (!window.__capturedTraces[entry.entryType]) {
@@ -49,8 +49,14 @@ new PerformanceObserver((list) => {
         }
         window.__capturedTraces[entry.entryType].push(entry);
     }
-}).observe({
-    entryTypes: ['longtask', 'measure', 'mark', 'paint'],
+}
+
+new PerformanceObserver(handleEntries).observe({
+    entryTypes: ['longtask', 'measure', 'mark', 'navigation', 'paint'],
+});
+
+new PerformanceObserver(handleEntries).observe({
+    type: 'long-animation-frame',
     buffered: true,
 });
 """
