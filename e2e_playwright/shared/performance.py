@@ -92,7 +92,12 @@ def measure_performance(page: Page, *, cpu_throttling_rate: int | None = None):
 def with_performance(test_func: Callable, *, cpu_throttling_rate: int | None = None):
     @wraps(test_func)
     def wrapper(*args, **kwargs):
-        page = kwargs.get("page") or kwargs.get("app") or args[0]
+        page = (
+            kwargs.get("themed_app")
+            or kwargs.get("page")
+            or kwargs.get("app")
+            or args[0]
+        )
         with measure_performance(page, cpu_throttling_rate=cpu_throttling_rate):
             test_func(*args, **kwargs)
 
