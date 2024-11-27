@@ -36,6 +36,27 @@ def with_cdp_session(page: Page):
     client.detach()
 
 
+# Observe long tasks, measure, marks, and paints with PerformanceObserver
+# @see https://developer.mozilla.org/en-US/docs/Web/API/PerformanceObserver
+CAPTURE_TRACES_SCRIPT = """
+window.__capturedTraces = {};
+
+new PerformanceObserver((list) => {
+    const entries = list.getEntries();
+    for (const entry of entries) {
+        if (!window.__capturedTraces[entry.entryType]) {
+            window.__capturedTraces[entry.entryType] = [];
+        }
+        window.__capturedTraces[entry.entryType].push(entry);
+    }
+}).observe({entryTypes: ['longtask', 'measure', 'mark', 'paint']});
+"""
+
+GET_CAPTURED_TRACES_SCRIPT = """
+JSON.stringify(window.__capturedTraces)
+"""
+
+
 @contextmanager
 def measure_performance(page: Page, *, cpu_throttling_rate: int | None = None):
     """
@@ -52,34 +73,15 @@ def measure_performance(page: Page, *, cpu_throttling_rate: int | None = None):
             client.send("Emulation.setCPUThrottlingRate", {"rate": cpu_throttling_rate})
 
         client.send("Performance.enable")
+        client.send("Runtime.evaluate", {"expression": CAPTURE_TRACES_SCRIPT})
 
-        # Observe long tasks, measure, marks, and paints with PerformanceObserver
-        # @see https://developer.mozilla.org/en-US/docs/Web/API/PerformanceObserver
-        client.send(
-            "Runtime.evaluate",
-            {
-                "expression": """
-                window.__capturedTraces = {};
-
-                new PerformanceObserver((list) => {
-                    const entries = list.getEntries();
-                    for (const entry of entries) {
-                        if (!window.__capturedTraces[entry.entryType]) {
-                            window.__capturedTraces[entry.entryType] = [];
-                        }
-                        window.__capturedTraces[entry.entryType].push(entry);
-                    }
-                }).observe({entryTypes: ['longtask', 'measure', 'mark', 'paint']});
-                """
-            },
-        )
-
+        # Run the test
         yield
 
         metrics_response = client.send("Performance.getMetrics")
         captured_traces = client.send(
             "Runtime.evaluate",
-            {"expression": "JSON.stringify(window.__capturedTraces)"},
+            {"expression": GET_CAPTURED_TRACES_SCRIPT},
         )["result"]["value"]
         parsed_captured_traces = json.loads(captured_traces)
 
@@ -87,6 +89,7 @@ def measure_performance(page: Page, *, cpu_throttling_rate: int | None = None):
         os.makedirs("./performance/results", exist_ok=True)
 
         timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+
         with open(f"./performance/results/performance_{timestamp}.json", "w") as f:
             json.dump(
                 {
