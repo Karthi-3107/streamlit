@@ -13,22 +13,11 @@
 # limitations under the License.
 
 import io
-from dataclasses import dataclass
 from datetime import datetime
-from typing import NamedTuple
 
-import altair as alt
-import graphviz
-import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
-import plotly.express as px
-import pydeck as pdk
-from PIL import Image
 
 import streamlit as st
-
-np.random.seed(0)
 
 st.subheader("st.write(markdown)")
 
@@ -88,100 +77,3 @@ st.subheader("st.write(generator)")
 st.write(stream_text)
 
 st.write(stream_text())
-
-
-st.subheader("st.write(dataframe-like)")
-
-st.write(pd.DataFrame(np.random.randn(25, 3), columns=["a", "b", "c"]))
-
-st.write(pd.Series([1, 2, 3]))
-
-st.write(
-    pd.DataFrame(np.random.randn(25, 3), columns=["a", "b", "c"]).style.format("{:.2%}")
-)
-
-st.write(np.arange(25).reshape(5, 5))
-
-st.subheader("st.write(json-like)")
-
-st.write(["foo", "bar"])
-
-st.write({"foo": "bar"})
-
-st.write(st.session_state)
-st.write(st.experimental_user)
-st.write(st.query_params)
-
-
-class Point(NamedTuple):
-    x: int
-    y: int
-
-
-st.write(Point(1, 2))
-
-st.subheader("st.write(help)")
-
-st.write(st.dataframe)
-
-
-@dataclass
-class ExampleClass:
-    name: str
-    age: int
-
-
-st.write(ExampleClass)
-
-st.write(ClassWithReprHtml())
-
-st.subheader("st.write(exception)")
-
-st.write(Exception("This is an exception!"))
-
-st.subheader("st.write(matplotlib)")
-
-fig, ax = plt.subplots()
-ax.hist(np.random.normal(1, 1, size=100), bins=20)
-
-st.write(fig)
-
-st.subheader("st.write(altair)")
-
-df = pd.DataFrame(np.random.randn(50, 3), columns=["a", "b", "c"])
-chart = alt.Chart(df).mark_circle().encode(x="a", y="b", size="c", color="c")
-st.write(chart)
-
-st.subheader("st.write(plotly)")
-
-fig = px.scatter(df, x="a", y="b")
-st.write(fig)
-
-st.subheader("st.write(graphviz)")
-
-graph = graphviz.Digraph()
-graph.edge("run", "intr")
-graph.edge("intr", "runbl")
-graph.edge("runbl", "run")
-
-st.write(graph)
-
-# Simple pydeck chart:
-
-st.subheader("st.write(pydeck)")
-
-st.write(
-    pdk.Deck(
-        map_style=None,
-        initial_view_state=pdk.ViewState(
-            latitude=37.76,
-            longitude=-122.4,
-            zoom=11,
-            pitch=50,
-        ),
-    )
-)
-
-st.subheader("st.write(Image)")
-
-st.write(Image.new("L", (10, 10), "black"))
