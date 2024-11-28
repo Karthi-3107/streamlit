@@ -84,10 +84,8 @@ export interface WrappedNamedDataset {
 }
 
 export function getInlineData(
-  el: VegaLiteChartElement
+  dataProto: Quiver | null
 ): { [field: string]: any }[] | null {
-  const dataProto = el.data
-
   if (!dataProto || dataProto.data.numRows === 0) {
     return null
   }
@@ -96,9 +94,9 @@ export function getInlineData(
 }
 
 export function getDataArrays(
-  el: VegaLiteChartElement
+  datasetsProto: WrappedNamedDataset[]
 ): { [dataset: string]: any[] } | null {
-  const datasets = getDataSets(el)
+  const datasets = getDataSets(datasetsProto)
   if (isNullOrUndefined(datasets)) {
     return null
   }
@@ -113,15 +111,15 @@ export function getDataArrays(
 }
 
 export function getDataSets(
-  el: VegaLiteChartElement
+  datasetsProto: WrappedNamedDataset[]
 ): { [dataset: string]: Quiver } | null {
-  if (el.datasets?.length === 0) {
+  if (datasetsProto?.length === 0) {
     return null
   }
 
   const datasets: { [dataset: string]: Quiver } = {}
 
-  el.datasets.forEach((x: WrappedNamedDataset) => {
+  datasetsProto.forEach((x: WrappedNamedDataset) => {
     if (!x) {
       return
     }

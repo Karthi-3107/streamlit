@@ -14,7 +14,14 @@
  * limitations under the License.
  */
 
-import React, { PureComponent } from "react"
+import React, {
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 
 import { Global, useTheme } from "@emotion/react"
 import embed from "vega-embed"
@@ -22,7 +29,6 @@ import * as vega from "vega"
 import { SignalValue } from "vega"
 import { expressionInterpreter } from "vega-interpreter"
 import isEqual from "lodash/isEqual"
-import { JSX } from "react/jsx-runtime"
 
 import {
   debounce,
@@ -37,7 +43,7 @@ import { logMessage, logWarning } from "@streamlit/lib/src/util/log"
 import { ensureError } from "@streamlit/lib/src/util/ErrorHandling"
 import { Quiver } from "@streamlit/lib/src/dataframes/Quiver"
 import { EmotionTheme } from "@streamlit/lib/src/theme"
-import { FormClearHelper } from "@streamlit/lib/src/components/widgets/Form"
+import { useFormClearHelper } from "@streamlit/lib/src/components/widgets/Form"
 import Toolbar, {
   StyledToolbarElementContainer,
 } from "@streamlit/lib/src/components/shared/Toolbar"
@@ -80,24 +86,12 @@ export interface VegaLiteState {
   selection: Record<string, any>
 }
 
-interface Props {
+export interface Props {
   element: VegaLiteChartElement
   width: number
   widgetMgr: WidgetStateManager
   fragmentId?: string
   disableFullscreenMode?: boolean
-}
-
-export interface PropsWithFullScreenAndTheme extends Props {
-  height?: number
-  theme: EmotionTheme
-  isFullScreen: boolean
-  expand?: () => void
-  collapse?: () => void
-}
-
-interface State {
-  error?: Error
 }
 
 /**
@@ -150,251 +144,126 @@ export function prepareSpecForSelections(spec: any): void {
   }
 }
 
-export class ArrowVegaLiteChart extends PureComponent<
-  PropsWithFullScreenAndTheme,
-  State
-> {
-  /**
-   * The Vega view object
-   */
-  private vegaView?: vega.View
-
-  /**
-   * Finalizer for the embedded vega object. Must be called to dispose
-   * of the vegaView when it's no longer used.
-   */
-  private vegaFinalizer?: () => void
-
-  /**
-   * The default data name to add to.
-   */
-  private defaultDataName = DEFAULT_DATA_NAME
-
-  /**
-   * The html element we attach the Vega view to.
-   */
-  private element: HTMLDivElement | null = null
-
-  /**
-   * Helper to manage form clear listeners.
-   * This is used to reset the selection state when the form is cleared.
-   */
-  private readonly formClearHelper = new FormClearHelper()
-
-  readonly state = {
-    error: undefined,
+const generateSpec = (
+  inputSpec: string,
+  useContainerWidth: boolean,
+  vegaLiteTheme: string,
+  selectionMode: string[],
+  theme: EmotionTheme,
+  isFullScreen: boolean,
+  width: number,
+  height?: number
+): any => {
+  const spec = JSON.parse(inputSpec)
+  if (vegaLiteTheme === "streamlit") {
+    spec.config = applyStreamlitTheme(spec.config, theme)
+  } else if (spec.usermeta?.embedOptions?.theme === "streamlit") {
+    spec.config = applyStreamlitTheme(spec.config, theme)
+    // Remove the theme from the usermeta so it doesn't get picked up by vega embed.
+    spec.usermeta.embedOptions.theme = undefined
+  } else {
+    // Apply minor theming improvements to work better with Streamlit
+    spec.config = applyThemeDefaults(spec.config, theme)
   }
 
-  public async componentDidMount(): Promise<void> {
-    try {
-      await this.createView()
-    } catch (e) {
-      const error = ensureError(e)
-      this.setState({ error })
+  if (isFullScreen) {
+    spec.width = width
+    spec.height = height
+
+    if ("vconcat" in spec) {
+      spec.vconcat.forEach((child: any) => {
+        child.width = width
+      })
+    }
+  } else if (useContainerWidth) {
+    spec.width = width
+
+    if ("vconcat" in spec) {
+      spec.vconcat.forEach((child: any) => {
+        child.width = width
+      })
     }
   }
 
-  public componentWillUnmount(): void {
-    this.finalizeView()
+  if (!spec.padding) {
+    spec.padding = {}
   }
 
-  /**
-   * Finalize the view so it can be garbage collected. This should be done
-   * when a new view is created, and when the component unmounts.
-   */
-  private finalizeView = (): any => {
-    if (this.vegaFinalizer) {
-      this.vegaFinalizer()
-    }
-    this.vegaFinalizer = undefined
-    this.vegaView = undefined
+  if (isNullOrUndefined(spec.padding.bottom)) {
+    spec.padding.bottom = BOTTOM_PADDING
   }
 
-  public async componentDidUpdate(
-    prevProps: PropsWithFullScreenAndTheme
-  ): Promise<void> {
-    const { element: prevElement, theme: prevTheme } = prevProps
-    const { element, theme } = this.props
-
-    const prevSpec = prevElement.spec
-    const { spec } = element
-
-    if (
-      !this.vegaView ||
-      prevSpec !== spec ||
-      prevTheme !== theme ||
-      prevProps.width !== this.props.width ||
-      prevProps.height !== this.props.height ||
-      prevProps.element.vegaLiteTheme !== this.props.element.vegaLiteTheme ||
-      !isEqual(
-        prevProps.element.selectionMode,
-        this.props.element.selectionMode
-      )
-    ) {
-      logMessage("Vega spec changed.")
-      try {
-        await this.createView()
-      } catch (e) {
-        const error = ensureError(e)
-
-        this.setState({ error })
-      }
-      return
-    }
-
-    const prevData = prevElement.data
-    const { data } = element
-
-    if (prevData || data) {
-      this.updateData(this.defaultDataName, prevData, data)
-    }
-
-    const prevDataSets = getDataSets(prevElement) || {}
-    const dataSets = getDataSets(element) || {}
-
-    for (const [name, dataset] of Object.entries(dataSets)) {
-      const datasetName = name || this.defaultDataName
-      const prevDataset = prevDataSets[datasetName]
-
-      this.updateData(datasetName, prevDataset, dataset)
-    }
-
-    // Remove all datasets that are in the previous but not the current datasets.
-    for (const name of Object.keys(prevDataSets)) {
-      if (!dataSets.hasOwnProperty(name) && name !== this.defaultDataName) {
-        this.updateData(name, null, null)
-      }
-    }
-
-    this.vegaView.resize().runAsync()
+  if (spec.datasets) {
+    throw new Error("Datasets should not be passed as part of the spec")
   }
 
-  public generateSpec = (): any => {
-    const { element: el, theme, isFullScreen, width, height } = this.props
-    const spec = JSON.parse(el.spec)
-    const { useContainerWidth } = el
-    if (el.vegaLiteTheme === "streamlit") {
-      spec.config = applyStreamlitTheme(spec.config, theme)
-    } else if (spec.usermeta?.embedOptions?.theme === "streamlit") {
-      spec.config = applyStreamlitTheme(spec.config, theme)
-      // Remove the theme from the usermeta so it doesn't get picked up by vega embed.
-      spec.usermeta.embedOptions.theme = undefined
-    } else {
-      // Apply minor theming improvements to work better with Streamlit
-      spec.config = applyThemeDefaults(spec.config, theme)
-    }
-
-    if (isFullScreen) {
-      spec.width = width
-      spec.height = height
-
-      if ("vconcat" in spec) {
-        spec.vconcat.forEach((child: any) => {
-          child.width = width
-        })
-      }
-    } else if (useContainerWidth) {
-      spec.width = width
-
-      if ("vconcat" in spec) {
-        spec.vconcat.forEach((child: any) => {
-          child.width = width
-        })
-      }
-    }
-
-    if (!spec.padding) {
-      spec.padding = {}
-    }
-
-    if (isNullOrUndefined(spec.padding.bottom)) {
-      spec.padding.bottom = BOTTOM_PADDING
-    }
-
-    if (spec.datasets) {
-      throw new Error("Datasets should not be passed as part of the spec")
-    }
-
-    if (el.selectionMode.length > 0) {
-      prepareSpecForSelections(spec)
-    }
-    return spec
+  if (selectionMode.length > 0) {
+    prepareSpecForSelections(spec)
   }
+  return spec
+}
 
-  /**
-   * Update the dataset in the Vega view. This method tried to minimize changes
-   * by automatically creating and applying diffs.
-   *
-   * @param name The name of the dataset.
-   * @param prevData The dataset before the update.
-   * @param data The dataset to use for the update.
-   */
-  private updateData(
-    name: string,
-    prevData: Quiver | null,
-    data: Quiver | null
-  ): void {
-    if (!this.vegaView) {
-      throw new Error("Chart has not been drawn yet")
+const useUpdateEffect: typeof useEffect = (effect, deps) => {
+  const isFirstMount = useRef(true)
+
+  useEffect(() => {
+    if (!isFirstMount.current) effect()
+    else isFirstMount.current = false
+  }, deps)
+}
+
+const ArrowVegaLiteChart: FC<Props> = ({
+  disableFullscreenMode,
+  element,
+  fragmentId,
+  widgetMgr,
+}) => {
+  const theme = useTheme()
+  const {
+    expanded: isFullScreen,
+    width,
+    height,
+    expand,
+    collapse,
+  } = useRequiredContext(ElementFullscreenContext)
+
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const vegaView = useRef<vega.View | null>(null)
+  const vegaFinalizer = useRef<(() => void) | null>(null)
+  const defaultDataName = useRef<string>(DEFAULT_DATA_NAME)
+  const [error, setError] = useState<Error | null>(null)
+
+  const finalizeView = useCallback(() => {
+    if (vegaFinalizer.current) {
+      vegaFinalizer.current()
     }
 
-    if (!data || data.data.numRows === 0) {
-      // The new data is empty, so we remove the dataset from the
-      // chart view if the named dataset exists.
-      try {
-        this.vegaView.remove(name, vega.truthy)
-      } finally {
-        return
-      }
-    }
+    vegaFinalizer.current = null
+    vegaView.current = null
+  }, [])
+  const {
+    id: chartId,
+    data,
+    datasets,
+    formId,
+    spec: inputSpec,
+    useContainerWidth,
+    selectionMode: inputSelectionMode,
+    vegaLiteTheme,
+  } = element
+  const selectionMode = useMemo(() => {
+    return inputSelectionMode
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(element.selectionMode)])
 
-    if (!prevData || prevData.data.numRows === 0) {
-      // The previous data was empty, so we just insert the new data.
-      this.vegaView.insert(name, getDataArray(data))
-      return
-    }
-
-    const { dataRows: prevNumRows, dataColumns: prevNumCols } =
-      prevData.dimensions
-    const { dataRows: numRows, dataColumns: numCols } = data.dimensions
-
-    // Check if dataframes have same "shape" but the new one has more rows.
-    if (
-      dataIsAnAppendOfPrev(
-        prevData,
-        prevNumRows,
-        prevNumCols,
-        data,
-        numRows,
-        numCols
-      )
-    ) {
-      if (prevNumRows < numRows) {
-        // Insert the new rows.
-        this.vegaView.insert(name, getDataArray(data, prevNumRows))
-      }
-    } else {
-      // Clean the dataset and insert from scratch.
-      this.vegaView.data(name, getDataArray(data))
-      logMessage(
-        `Had to clear the ${name} dataset before inserting data through Vega view.`
-      )
-    }
-  }
-
-  /**
-   * Configure the selections for this chart if the chart has selections enabled.
-   */
-  private maybeConfigureSelections = (): void => {
-    if (this.vegaView === undefined) {
+  const maybeConfigureSelections = useCallback((): void => {
+    if (vegaView.current === null) {
       // This check is mainly to make the type checker happy.
       // this.vegaView is guaranteed to be defined here.
       return
     }
 
-    const { widgetMgr, element } = this.props
-
-    if (!element?.id || element.selectionMode.length === 0) {
+    if (!chartId || selectionMode.length === 0) {
       // To configure selections, it needs to be activated and
       // the element ID must be set.
       return
@@ -403,13 +272,10 @@ export class ArrowVegaLiteChart extends PureComponent<
     // Try to load the previous state of the chart from the element state.
     // This is useful to restore the selection state when the component is re-mounted
     // or when its put into fullscreen mode.
-    const viewState = widgetMgr.getElementState(
-      this.props.element.id,
-      "viewState"
-    )
+    const viewState = widgetMgr.getElementState(chartId, "viewState")
     if (notNullOrUndefined(viewState)) {
       try {
-        this.vegaView = this.vegaView.setState(viewState)
+        vegaView.current = vegaView.current.setState(viewState)
       } catch (e) {
         logWarning("Failed to restore view state", e)
       }
@@ -417,8 +283,8 @@ export class ArrowVegaLiteChart extends PureComponent<
 
     // Add listeners for all selection events. Find out more here:
     // https://vega.github.io/vega/docs/api/view/#view_addSignalListener
-    element.selectionMode.forEach((param, _index) => {
-      this.vegaView?.addSignalListener(
+    selectionMode.forEach((param, _index) => {
+      vegaView.current?.addSignalListener(
         param,
         debounce(DEBOUNCE_TIME_MS, (name: string, value: SignalValue) => {
           // Store the current chart selection state with the widget manager so that it
@@ -426,16 +292,14 @@ export class ArrowVegaLiteChart extends PureComponent<
           // created again. This can happen when elements are added before it within
           // the delta path. The viewState is only stored in the frontend, and not
           // synced to the backend.
-          const viewState = this.vegaView?.getState({
+          const viewState = vegaView.current?.getState({
             // There are also `signals` data, but I believe its
             // not relevant for restoring the selection state.
             data: (name?: string, _operator?: any) => {
               // Vega lite stores the selection state in a <param name>_store parameter
               // under `data` that can be retrieved via the getState method.
               // https://vega.github.io/vega/docs/api/view/#view_getState
-              return element.selectionMode.some(
-                mode => `${mode}_store` === name
-              )
+              return selectionMode.some(mode => `${mode}_store` === name)
             },
             // Don't include subcontext data since it will lead to exceptions
             // when loading the state.
@@ -443,7 +307,7 @@ export class ArrowVegaLiteChart extends PureComponent<
           })
 
           if (notNullOrUndefined(viewState)) {
-            widgetMgr.setElementState(element.id, "viewState", viewState)
+            widgetMgr.setElementState(chartId, "viewState", viewState)
           }
 
           // If selection encodings are correctly specified, vega-lite will return
@@ -456,9 +320,11 @@ export class ArrowVegaLiteChart extends PureComponent<
             processedSelection = value.vlPoint.or
           }
 
+          const widgetInfo: WidgetInfo = { id: chartId, formId }
+
           // Get the current widget state
           const currentWidgetState = JSON.parse(
-            widgetMgr.getStringValue(element as WidgetInfo) || "{}"
+            widgetMgr.getStringValue(widgetInfo) || "{}"
           )
 
           // Update the component-internal selection state
@@ -474,182 +340,268 @@ export class ArrowVegaLiteChart extends PureComponent<
           // with the backend.
           if (!isEqual(currentWidgetState, updatedSelections)) {
             widgetMgr.setStringValue(
-              element as WidgetInfo,
+              widgetInfo,
               JSON.stringify(updatedSelections),
               {
                 fromUi: true,
               },
-              this.props.fragmentId
+              fragmentId
             )
           }
         })
       )
     })
+  }, [chartId, selectionMode, widgetMgr, formId, fragmentId])
 
-    /**
-     * Callback to reset the selection and update the widget state.
-     * This might also send the empty selection state to the backend.
-     */
-    const reset = (): void => {
-      const emptySelectionState: VegaLiteState = {
-        selection: {},
+  const spec = useMemo(
+    () =>
+      generateSpec(
+        inputSpec,
+        useContainerWidth,
+        vegaLiteTheme,
+        selectionMode,
+        theme,
+        isFullScreen,
+        width,
+        height
+      ),
+    [
+      inputSpec,
+      useContainerWidth,
+      vegaLiteTheme,
+      selectionMode,
+      theme,
+      isFullScreen,
+      width,
+      height,
+    ]
+  )
+
+  const createView = useCallback(async (): Promise<void> => {
+    try {
+      logMessage("Creating a new Vega view.")
+
+      if (!containerRef.current) {
+        throw new Error("Element missing.")
       }
-      // Initialize all parameters defined in the selectionMode with an empty object.
-      this.props.element.selectionMode.forEach(param => {
-        emptySelectionState.selection[param] = {}
-      })
-      const currentWidgetStateStr = widgetMgr.getStringValue(
-        element as WidgetInfo
-      )
-      const currentWidgetState = currentWidgetStateStr
-        ? JSON.parse(currentWidgetStateStr)
-        : // If there wasn't any selection yet, the selection state
-          // is assumed to be empty.
-          emptySelectionState
 
-      if (!isEqual(currentWidgetState, emptySelectionState)) {
-        this.props.widgetMgr?.setStringValue(
-          this.props.element as WidgetInfo,
-          JSON.stringify(emptySelectionState),
-          {
-            fromUi: true,
-          },
-          this.props.fragmentId
+      // Finalize the previous view so it can be garbage collected.
+      finalizeView()
+
+      const options = {
+        // Adds interpreter support for Vega expressions that is compliant with CSP
+        ast: true,
+        expr: expressionInterpreter,
+
+        // Disable default styles so that vega doesn't inject <style> tags in the
+        // DOM. We set these styles manually for finer control over them and to
+        // avoid inlining styles.
+        tooltip: { disableDefaultStyle: true },
+        defaultStyle: false,
+        forceActionsMenu: true,
+      }
+
+      const { vgSpec, view, finalize } = await embed(
+        containerRef.current,
+        spec,
+        options
+      )
+
+      vegaView.current = view
+
+      maybeConfigureSelections()
+
+      vegaFinalizer.current = finalize
+
+      const dataArrays = getDataArrays(datasets ?? [])
+
+      // Heuristic to determine the default dataset name.
+      const datasetNames = dataArrays ? Object.keys(dataArrays) : []
+      if (datasetNames.length === 1) {
+        const [datasetName] = datasetNames
+        defaultDataName.current = datasetName
+      } else if (datasetNames.length === 0 && vgSpec.data) {
+        defaultDataName.current = DEFAULT_DATA_NAME
+      }
+
+      const dataObj = getInlineData(data)
+      if (dataObj) {
+        view.insert(defaultDataName.current, dataObj)
+      }
+      if (dataArrays) {
+        for (const [name, data] of Object.entries(dataArrays)) {
+          view.insert(name, data)
+        }
+      }
+
+      await view.runAsync()
+
+      // Fix bug where the "..." menu button overlaps with charts where width is
+      // set to -1 on first load.
+      vegaView.current.resize().runAsync()
+      vegaView.current = view
+    } catch (e) {
+      setError(ensureError(e))
+    }
+  }, [finalizeView, spec, maybeConfigureSelections, datasets, data])
+
+  useEffect(() => {
+    if (vegaView.current) {
+      logMessage("Vega spec changed.")
+    } else {
+      logMessage("View does not exist yet")
+    }
+
+    createView()
+
+    return finalizeView()
+  }, [spec, theme, width, height, selectionMode, createView, finalizeView])
+
+  const prevElement = useRef<VegaLiteChartElement | null>(null)
+
+  const updateData = useCallback(
+    (name: string, prevData: Quiver | null, data: Quiver | null): void => {
+      if (!vegaView.current) {
+        return
+      }
+
+      if (!data || data.data.numRows === 0) {
+        // The new data is empty, so we remove the dataset from the
+        // chart view if the named dataset exists.
+        try {
+          vegaView.current.remove(name, vega.truthy)
+        } finally {
+          return
+        }
+      }
+
+      if (!prevData || prevData.data.numRows === 0) {
+        // The previous data was empty, so we just insert the new data.
+        vegaView.current.insert(name, getDataArray(data))
+        return
+      }
+
+      const { dataRows: prevNumRows, dataColumns: prevNumCols } =
+        prevData.dimensions
+      const { dataRows: numRows, dataColumns: numCols } = data.dimensions
+
+      // Check if dataframes have same "shape" but the new one has more rows.
+      if (
+        dataIsAnAppendOfPrev(
+          prevData,
+          prevNumRows,
+          prevNumCols,
+          data,
+          numRows,
+          numCols
+        )
+      ) {
+        if (prevNumRows < numRows) {
+          // Insert the new rows.
+          vegaView.current.insert(name, getDataArray(data, prevNumRows))
+        }
+      } else {
+        // Clean the dataset and insert from scratch.
+        vegaView.current.data(name, getDataArray(data))
+        logMessage(
+          `Had to clear the ${name} dataset before inserting data through Vega view.`
         )
       }
-    }
+    },
+    []
+  )
 
-    // Add the form clear listener if we are in a form (formId defined)
-    if (this.props.element.formId) {
-      this.formClearHelper.manageFormClearListener(
-        this.props.widgetMgr,
-        this.props.element.formId,
-        reset
+  useEffect(() => {
+    if (prevElement.current || data) {
+      updateData(
+        defaultDataName.current,
+        prevElement.current?.data ?? null,
+        data
       )
     }
-  }
 
-  /**
-   * Create a new Vega view and add the data.
-   */
-  private async createView(): Promise<void> {
-    logMessage("Creating a new Vega view.")
+    const prevDataSets = getDataSets(prevElement.current?.datasets ?? []) ?? {}
+    const dataSets = getDataSets(datasets) ?? {}
 
-    if (!this.element) {
-      throw Error("Element missing.")
+    for (const [name, dataset] of Object.entries(dataSets)) {
+      const datasetName = name || defaultDataName.current
+      const prevDataset = prevDataSets[datasetName]
+
+      updateData(datasetName, prevDataset, dataset)
     }
 
-    // Finalize the previous view so it can be garbage collected.
-    this.finalizeView()
-
-    const { element } = this.props
-    const spec = this.generateSpec()
-    const options = {
-      // Adds interpreter support for Vega expressions that is compliant with CSP
-      ast: true,
-      expr: expressionInterpreter,
-
-      // Disable default styles so that vega doesn't inject <style> tags in the
-      // DOM. We set these styles manually for finer control over them and to
-      // avoid inlining styles.
-      tooltip: { disableDefaultStyle: true },
-      defaultStyle: false,
-      forceActionsMenu: true,
-    }
-
-    const { vgSpec, view, finalize } = await embed(this.element, spec, options)
-
-    this.vegaView = view
-
-    this.maybeConfigureSelections()
-
-    this.vegaFinalizer = finalize
-
-    const datasets = getDataArrays(element)
-
-    // Heuristic to determine the default dataset name.
-    const datasetNames = datasets ? Object.keys(datasets) : []
-    if (datasetNames.length === 1) {
-      const [datasetName] = datasetNames
-      this.defaultDataName = datasetName
-    } else if (datasetNames.length === 0 && vgSpec.data) {
-      this.defaultDataName = DEFAULT_DATA_NAME
-    }
-
-    const dataObj = getInlineData(element)
-    if (dataObj) {
-      view.insert(this.defaultDataName, dataObj)
-    }
-    if (datasets) {
-      for (const [name, data] of Object.entries(datasets)) {
-        view.insert(name, data)
+    // Remove all datasets that are in the previous but not the current datasets.
+    for (const name of Object.keys(prevDataSets)) {
+      if (!dataSets.hasOwnProperty(name) && name !== defaultDataName.current) {
+        updateData(name, null, null)
       }
     }
 
-    await view.runAsync()
+    vegaView.current?.resize().runAsync()
+    prevElement.current = element
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [element.data, updateData])
 
-    // Fix bug where the "..." menu button overlaps with charts where width is
-    // set to -1 on first load.
-    this.vegaView.resize().runAsync()
-  }
-
-  public render(): JSX.Element {
-    if (this.state.error) {
-      // eslint-disable-next-line @typescript-eslint/no-throw-literal
-      throw this.state.error
+  const onFormCleared = useCallback(() => {
+    const emptySelectionState: VegaLiteState = {
+      selection: {},
     }
-    // Create the container inside which Vega draws its content.
-    // To style the Vega tooltip, we need to apply global styles since
-    // the tooltip element is drawn outside of this component.
-    return (
-      <StyledToolbarElementContainer
-        width={this.props.width}
-        height={this.props.height}
-        useContainerWidth={this.props.element.useContainerWidth}
-      >
-        <Toolbar
-          target={StyledToolbarElementContainer}
-          isFullScreen={this.props.isFullScreen}
-          onExpand={this.props.expand}
-          onCollapse={this.props.collapse}
-          disableFullscreenMode={this.props.disableFullscreenMode}
-        ></Toolbar>
-        <Global styles={StyledVegaLiteChartTooltips} />
-        <StyledVegaLiteChartContainer
-          data-testid="stVegaLiteChart"
-          className="stVegaLiteChart"
-          useContainerWidth={this.props.element.useContainerWidth}
-          isFullScreen={this.props.isFullScreen}
-          ref={c => {
-            this.element = c
-          }}
-        />
-      </StyledToolbarElementContainer>
-    )
+    // Initialize all parameters defined in the selectionMode with an empty object.
+    selectionMode.forEach(param => {
+      emptySelectionState.selection[param] = {}
+    })
+    const widgetInfo = { id: chartId, formId }
+    const currentWidgetStateStr = widgetMgr.getStringValue(widgetInfo)
+    const currentWidgetState = currentWidgetStateStr
+      ? JSON.parse(currentWidgetStateStr)
+      : // If there wasn't any selection yet, the selection state
+        // is assumed to be empty.
+        emptySelectionState
+
+    if (!isEqual(currentWidgetState, emptySelectionState)) {
+      widgetMgr.setStringValue(
+        widgetInfo,
+        JSON.stringify(emptySelectionState),
+        {
+          fromUi: true,
+        },
+        fragmentId
+      )
+    }
+  }, [chartId, formId, fragmentId, selectionMode, widgetMgr])
+
+  useFormClearHelper({ widgetMgr, element, onFormCleared })
+
+  if (error) {
+    throw error
   }
-}
 
-const ArrowVegaLiteChartWrapper = (props: Props): React.ReactElement => {
-  const theme = useTheme()
-  const {
-    expanded: isFullScreen,
-    width,
-    height,
-    expand,
-    collapse,
-  } = useRequiredContext(ElementFullscreenContext)
-
+  // Create the container inside which Vega draws its content.
+  // To style the Vega tooltip, we need to apply global styles since
+  // the tooltip element is drawn outside of this component.
   return (
-    <ArrowVegaLiteChart
-      theme={theme}
-      isFullScreen={isFullScreen}
-      {...props}
+    <StyledToolbarElementContainer
+      width={width}
       height={height}
-      width={isFullScreen ? width : props.width}
-      expand={expand}
-      collapse={collapse}
-    />
+      useContainerWidth={element.useContainerWidth}
+    >
+      <Toolbar
+        target={StyledToolbarElementContainer}
+        isFullScreen={isFullScreen}
+        onExpand={expand}
+        onCollapse={collapse}
+        disableFullscreenMode={disableFullscreenMode}
+      ></Toolbar>
+      <Global styles={StyledVegaLiteChartTooltips} />
+      <StyledVegaLiteChartContainer
+        data-testid="stVegaLiteChart"
+        className="stVegaLiteChart"
+        useContainerWidth={element.useContainerWidth}
+        isFullScreen={isFullScreen}
+        ref={containerRef}
+      />
+    </StyledToolbarElementContainer>
   )
 }
 
-export default withFullScreenWrapper(ArrowVegaLiteChartWrapper)
+export default withFullScreenWrapper(ArrowVegaLiteChart)
