@@ -30,13 +30,6 @@ st.write("This <b>HTML tag</b> is escaped!")
 st.write("This <b>HTML tag</b> is not escaped!", unsafe_allow_html=True)
 
 
-class ClassWithReprHtml:
-    def _repr_html_(self):
-        return "This <b>HTML tag</b> is also not escaped!"
-
-
-st.write(ClassWithReprHtml(), unsafe_allow_html=True)
-
 st.write(100)
 
 st.write(None)

@@ -23,9 +23,6 @@ def test_displays_markdown(app: Page, assert_snapshot: ImageCompareFunction):
     markdown_elements = app.get_by_test_id("stMarkdown")
     expect(markdown_elements).to_have_count(13)
 
-    html_elements = app.get_by_test_id("stHtml")
-    expect(html_elements).to_have_count(1)
-
     expect(markdown_elements.nth(0)).to_contain_text("Hello World")
     expect(markdown_elements.nth(1)).to_contain_text("This markdown is awesome! 😎")
     expect(markdown_elements.nth(2)).to_contain_text("This <b>HTML tag</b> is escaped!")

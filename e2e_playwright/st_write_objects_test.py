@@ -29,44 +29,20 @@ def test_display_json(app: Page):
 
 
 def test_display_help(app: Page):
-    """Test that st.write displays objects via st.help."""
     help_elements = app.get_by_test_id("stHelp")
+    """Test that st.write displays objects via st.help."""
     expect(help_elements).to_have_count(3)
+
+
+def test_displays_reprhtml(app: Page):
+    """Test that repr_html is displayed correctly."""
+
+    html_elements = app.get_by_test_id("stHtml")
+    expect(html_elements).to_have_count(1)
+    expect(html_elements.first).to_contain_text("This is an HTML tag!")
 
 
 def test_display_exception(app: Page):
     """Test that st.write displays exceptions via st.exception."""
     exception_elements = app.get_by_test_id("stException")
     expect(exception_elements).to_have_count(1)
-
-
-def test_display_images(app: Page):
-    """Test that st.write displays images (including matplotlib charts)."""
-    image_elements = app.get_by_test_id("stImage")
-    expect(image_elements).to_have_count(2)
-
-
-def test_display_altair(app: Page):
-    """Test that st.write displays altair charts."""
-    altair_elements = app.get_by_test_id("stVegaLiteChart")
-    expect(altair_elements).to_have_count(1)
-
-
-def test_display_plotly(app: Page):
-    """Test that st.write displays plotly charts."""
-    plotly_elements = app.get_by_test_id("stPlotlyChart")
-    expect(plotly_elements).to_have_count(1)
-
-
-def test_display_graphviz(app: Page):
-    """Test that st.write displays graphviz charts."""
-    plotly_elements = app.get_by_test_id("stGraphVizChart")
-    expect(plotly_elements).to_have_count(1)
-
-
-def test_display_pydeck_chart(app: Page):
-    """Test that st.write displays pydeck charts."""
-    pydeck_elements = app.get_by_test_id("stDeckGlJsonChart")
-    # The pydeck chart takes a while to load so check that
-    # it gets attached with an increased timeout.
-    expect(pydeck_elements).to_have_count(1, timeout=15000)

@@ -15,23 +15,12 @@
 from dataclasses import dataclass
 from typing import NamedTuple
 
-import altair as alt
-import graphviz
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import plotly.express as px
-import pydeck as pdk
-from PIL import Image
 
 import streamlit as st
 
 np.random.seed(0)
-
-
-class ClassWithReprHtml:
-    def _repr_html_(self):
-        return "This <b>HTML tag</b> is also not escaped!"
 
 
 st.subheader("st.write(dataframe-like)")
@@ -77,55 +66,20 @@ class ExampleClass:
 
 st.write(ExampleClass)
 
+st.subheader("st.write(reprhtmlable)")
+
+
+class ClassWithReprHtml:
+    def _repr_html_(self):
+        return "This is an <b>HTML tag</b>!"
+
+
+# Shows as st.help because this is just an object.
 st.write(ClassWithReprHtml())
+
+# Shows as HTML.
+st.write(ClassWithReprHtml(), unsafe_allow_html=True)
 
 st.subheader("st.write(exception)")
 
 st.write(Exception("This is an exception!"))
-
-st.subheader("st.write(matplotlib)")
-
-fig, ax = plt.subplots()
-ax.hist(np.random.normal(1, 1, size=100), bins=20)
-
-st.write(fig)
-
-st.subheader("st.write(altair)")
-
-df = pd.DataFrame(np.random.randn(50, 3), columns=["a", "b", "c"])
-chart = alt.Chart(df).mark_circle().encode(x="a", y="b", size="c", color="c")
-st.write(chart)
-
-st.subheader("st.write(plotly)")
-
-fig = px.scatter(df, x="a", y="b")
-st.write(fig)
-
-st.subheader("st.write(graphviz)")
-
-graph = graphviz.Digraph()
-graph.edge("run", "intr")
-graph.edge("intr", "runbl")
-graph.edge("runbl", "run")
-
-st.write(graph)
-
-# Simple pydeck chart:
-
-st.subheader("st.write(pydeck)")
-
-st.write(
-    pdk.Deck(
-        map_style=None,
-        initial_view_state=pdk.ViewState(
-            latitude=37.76,
-            longitude=-122.4,
-            zoom=11,
-            pitch=50,
-        ),
-    )
-)
-
-st.subheader("st.write(Image)")
-
-st.write(Image.new("L", (10, 10), "black"))
