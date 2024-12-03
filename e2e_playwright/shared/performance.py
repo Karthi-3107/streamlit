@@ -21,6 +21,8 @@ from contextlib import contextmanager
 from functools import wraps
 from typing import TYPE_CHECKING, Callable
 
+import pytest
+
 if TYPE_CHECKING:
     from playwright.sync_api import Page
 
@@ -118,6 +120,7 @@ def with_performance(*, cpu_throttling_rate: int | None = None):
     """
 
     def decorator(test_func: Callable):
+        @pytest.mark.only_browser("chromium")
         @wraps(test_func)
         def wrapper(*args, **kwargs):
             """
