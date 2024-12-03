@@ -841,7 +841,7 @@ def pytest_configure(config: pytest.Config):
     )
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(scope="function", autouse=True)
 def playwright_profiling(request, app: Page):
     if request.node.get_closest_marker("no_perf"):
         yield

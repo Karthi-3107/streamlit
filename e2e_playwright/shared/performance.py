@@ -85,10 +85,11 @@ def measure_performance(
         yield
 
         metrics_response = client.send("Performance.getMetrics")
-        captured_traces = client.send(
+        captured_traces_result = client.send(
             "Runtime.evaluate",
             {"expression": GET_CAPTURED_TRACES_SCRIPT},
-        )["result"]["value"]
+        )["result"]
+        captured_traces = captured_traces_result.get("value", "{}")
         parsed_captured_traces = json.loads(captured_traces)
 
         # Ensure the directory exists
