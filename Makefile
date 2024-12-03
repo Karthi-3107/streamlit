@@ -159,6 +159,7 @@ mypy:
 .PHONY: bare-execution-tests
 # Run all our e2e tests in "bare" mode and check for non-zero exit codes.
 bare-execution-tests:
+	PYTHONPATH=. \
 	python3 scripts/run_bare_execution_tests.py
 
 .PHONY: cli-smoke-tests
