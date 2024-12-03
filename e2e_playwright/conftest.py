@@ -55,6 +55,12 @@ if TYPE_CHECKING:
     from types import ModuleType
 
 
+def pytest_configure(config: pytest.Config):
+    config.addinivalue_line(
+        "markers", "no_perf: mark test to not use performance profiling"
+    )
+
+
 def reorder_early_fixtures(metafunc: pytest.Metafunc):
     """Put fixtures with `pytest.mark.early` first during execution
 
@@ -200,6 +206,9 @@ def wait_for_app_server_to_start(port: int, timeout: int = 5) -> bool:
         if time.time() - start_time > 60 * timeout:
             return False
     return True
+
+
+# region Fixtures
 
 
 @pytest.fixture(scope="module")
@@ -716,7 +725,32 @@ def assert_snapshot(
         )
 
 
-# Public utility methods:
+@pytest.fixture(scope="function", autouse=True)
+def playwright_profiling(request, app: Page):
+    if request.node.get_closest_marker("no_perf"):
+        yield
+        return
+
+    browser = app.context.browser
+    browser_name = browser.browser_type.name if browser is not None else "unknown"
+    # Only measure performance for Chromium browsers since it relies on
+    # Chrome DevTools Protocol under the hood
+    if browser_name != "chromium":
+        yield
+        return
+
+    with measure_performance(
+        app,
+        test_name=request.node.name,
+        # cpu_throttling_rate=cpu_throttling_rate,
+    ):
+        yield
+
+
+# endregion
+
+
+# region Public utility methods
 
 
 def wait_for_app_run(
@@ -835,29 +869,4 @@ def wait_until(page: Page, fn: Callable, timeout: int = 5000, interval: int = 10
         page.wait_for_timeout(interval)
 
 
-def pytest_configure(config: pytest.Config):
-    config.addinivalue_line(
-        "markers", "no_perf: mark test to not use performance profiling"
-    )
-
-
-@pytest.fixture(scope="function", autouse=True)
-def playwright_profiling(request, app: Page):
-    if request.node.get_closest_marker("no_perf"):
-        yield
-        return
-
-    browser = app.context.browser
-    browser_name = browser.browser_type.name if browser is not None else "unknown"
-    # Only measure performance for Chromium browsers since it relies on
-    # Chrome DevTools Protocol under the hood
-    if browser_name != "chromium":
-        yield
-        return
-
-    with measure_performance(
-        app,
-        test_name=request.node.name,
-        # cpu_throttling_rate=cpu_throttling_rate,
-    ):
-        yield
+# endregion
