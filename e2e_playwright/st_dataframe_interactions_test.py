@@ -24,7 +24,6 @@ from e2e_playwright.shared.dataframe_utils import (
     expect_canvas_to_be_visible,
     get_open_cell_overlay,
 )
-from e2e_playwright.shared.performance import with_performance
 from e2e_playwright.shared.toolbar_utils import (
     assert_fullscreen_toolbar_button_interactions,
 )
@@ -417,7 +416,6 @@ def test_text_cell_read_only_overlay_formatting(
     assert_snapshot(cell_overlay, name="st_dataframe-text_col_overlay")
 
 
-@with_performance()
 def test_text_cell_editing(themed_app: Page, assert_snapshot: ImageCompareFunction):
     """Test that the number cell can be edited."""
     cell_overlay_test_df = themed_app.get_by_test_id("stDataFrame").nth(3)

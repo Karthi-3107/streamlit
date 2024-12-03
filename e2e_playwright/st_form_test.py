@@ -21,10 +21,8 @@ from e2e_playwright.shared.app_utils import (
     click_checkbox,
     click_toggle,
 )
-from e2e_playwright.shared.performance import with_performance
 
 
-@with_performance()
 def test_form_performance(app: Page):
     form_1 = app.get_by_test_id("stForm").nth(0)
     form_1.get_by_test_id("stTextArea").locator("textarea").fill("bar")

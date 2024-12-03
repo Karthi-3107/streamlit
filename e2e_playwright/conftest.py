@@ -49,6 +49,8 @@ from playwright.sync_api import (
 )
 from pytest import FixtureRequest
 
+from e2e_playwright.shared.performance import measure_performance
+
 if TYPE_CHECKING:
     from types import ModuleType
 
@@ -831,3 +833,31 @@ def wait_until(page: Page, fn: Callable, timeout: int = 5000, interval: int = 10
             if timed_out():
                 raise TimeoutError(timeout_msg)
         page.wait_for_timeout(interval)
+
+
+def pytest_configure(config: pytest.Config):
+    config.addinivalue_line(
+        "markers", "no_perf: mark test to not use performance profiling"
+    )
+
+
+@pytest.fixture(autouse=True)
+def playwright_profiling(request, app: Page):
+    if request.node.get_closest_marker("no_perf"):
+        yield
+        return
+
+    browser = app.context.browser
+    browser_name = browser.browser_type.name if browser is not None else "unknown"
+    # Only measure performance for Chromium browsers since it relies on
+    # Chrome DevTools Protocol under the hood
+    if browser_name != "chromium":
+        yield
+        return
+
+    with measure_performance(
+        app,
+        test_name=request.node.name,
+        # cpu_throttling_rate=cpu_throttling_rate,
+    ):
+        yield

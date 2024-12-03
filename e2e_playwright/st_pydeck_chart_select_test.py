@@ -27,7 +27,6 @@ from e2e_playwright.shared.app_utils import (
     click_form_button,
     expect_prefixed_markdown,
 )
-from e2e_playwright.shared.performance import with_performance
 from e2e_playwright.shared.pydeck_utils import (
     get_click_handling_div,
     wait_for_chart,
@@ -279,7 +278,6 @@ def test_pydeck_chart_multiselect_has_consistent_visuals(
     )
 
 
-@with_performance()
 @pytest.mark.only_browser("chromium")
 def test_pydeck_chart_selection_state_remains_after_unmounting(
     app: Page, assert_snapshot: ImageCompareFunction
@@ -314,7 +312,6 @@ def test_pydeck_chart_selection_state_remains_after_unmounting(
     )
 
 
-@with_performance()
 @pytest.mark.only_browser("chromium")
 def test_pydeck_chart_selection_callback(app: Page):
     """

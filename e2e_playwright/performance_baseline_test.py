@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 from playwright.sync_api import Page
 
 from e2e_playwright.conftest import wait_for_app_run
-from e2e_playwright.shared.performance import with_performance
 
 
-@with_performance()
 def test_recalculations(app: Page):
     slider = app.get_by_test_id("stSlider").nth(0)
     slider.hover()

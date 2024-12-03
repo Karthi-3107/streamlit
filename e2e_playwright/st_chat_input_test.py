@@ -16,7 +16,6 @@ from playwright.sync_api import Page, expect
 
 from e2e_playwright.conftest import ImageCompareFunction, rerun_app, wait_for_app_loaded
 from e2e_playwright.shared.app_utils import check_top_level_class, get_element_by_key
-from e2e_playwright.shared.performance import with_performance
 
 
 def test_chat_input_rendering(app: Page, assert_snapshot: ImageCompareFunction):
@@ -100,7 +99,6 @@ def test_app_with_bottom_chat_input(app: Page, assert_snapshot: ImageCompareFunc
     assert_snapshot(app.get_by_test_id("stBottom"), name="st_chat_input-app_bottom")
 
 
-@with_performance()
 def test_enter_submits_clears_input(app: Page):
     """Test that pressing Enter submits and clears the input."""
     markdown_output = app.get_by_test_id("stMarkdown").nth(3)
