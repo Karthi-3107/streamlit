@@ -18,8 +18,7 @@ import datetime
 import json
 import os
 from contextlib import contextmanager
-from functools import wraps
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from playwright.sync_api import Page
@@ -61,11 +60,20 @@ JSON.stringify(window.__capturedTraces)
 """
 
 
+def is_supported_browser(page: Page) -> bool:
+    browser = page.context.browser
+    browser_name = browser.browser_type.name if browser is not None else "unknown"
+    # Only measure performance for Chromium browsers since it relies on
+    # Chrome DevTools Protocol under the hood
+    return browser_name == "chromium"
+
+
 def start_capture_traces(page: Page):
     """
     Start capturing traces using the PerformanceObserver API.
     """
-    page.evaluate(CAPTURE_TRACES_SCRIPT)
+    if is_supported_browser(page):
+        page.evaluate(CAPTURE_TRACES_SCRIPT)
 
 
 @contextmanager
@@ -127,49 +135,3 @@ def measure_performance(
                 },
                 f,
             )
-
-
-def with_performance(*, cpu_throttling_rate: int | None = None):
-    """
-    A decorator to measure the performance of a test function.
-
-    Args:
-        cpu_throttling_rate (int | None, optional): Throttling rate as a slowdown factor (1 is no throttle, 2 is 2x slowdown, etc). Defaults to None.
-
-    Returns:
-        Callable: The decorated test function with performance measurement.
-    """
-
-    def decorator(test_func: Callable):
-        @wraps(test_func)
-        def wrapper(*args, **kwargs):
-            """
-            Wrapper function to measure performance.
-
-            Args:
-                *args: Positional arguments for the test function.
-                **kwargs: Keyword arguments for the test function.
-            """
-
-            browser_name = kwargs.get("browser_name")
-            # Only measure performance for Chromium browsers since it relies on
-            # Chrome DevTools Protocol under the hood
-            if browser_name != "chromium":
-                return test_func(*args, **kwargs)
-
-            page = (
-                kwargs.get("themed_app")
-                or kwargs.get("page")
-                or kwargs.get("app")
-                or args[0]
-            )
-            with measure_performance(
-                page,
-                test_name=test_func.__name__,
-                cpu_throttling_rate=cpu_throttling_rate,
-            ):
-                test_func(*args, **kwargs)
-
-        return wrapper
-
-    return decorator
