@@ -726,12 +726,12 @@ def assert_snapshot(
 
 
 @pytest.fixture(scope="function", autouse=True)
-def playwright_profiling(request, app: Page):
+def playwright_profiling(request, page: Page):
     if request.node.get_closest_marker("no_perf"):
         yield
         return
 
-    browser = app.context.browser
+    browser = page.context.browser
     browser_name = browser.browser_type.name if browser is not None else "unknown"
     # Only measure performance for Chromium browsers since it relies on
     # Chrome DevTools Protocol under the hood
@@ -740,7 +740,7 @@ def playwright_profiling(request, app: Page):
         return
 
     with measure_performance(
-        app,
+        page,
         test_name=request.node.name,
         # cpu_throttling_rate=cpu_throttling_rate,
     ):
