@@ -61,6 +61,13 @@ JSON.stringify(window.__capturedTraces)
 """
 
 
+def start_capture_traces(page: Page):
+    """
+    Start capturing traces using the PerformanceObserver API.
+    """
+    page.evaluate(CAPTURE_TRACES_SCRIPT)
+
+
 @contextmanager
 def measure_performance(
     page: Page, *, test_name: str, cpu_throttling_rate: int | None = None
@@ -79,7 +86,6 @@ def measure_performance(
             client.send("Emulation.setCPUThrottlingRate", {"rate": cpu_throttling_rate})
 
         client.send("Performance.enable")
-        client.send("Runtime.evaluate", {"expression": CAPTURE_TRACES_SCRIPT})
 
         # Run the test
         yield

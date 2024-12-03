@@ -49,7 +49,7 @@ from playwright.sync_api import (
 )
 from pytest import FixtureRequest
 
-from e2e_playwright.shared.performance import measure_performance
+from e2e_playwright.shared.performance import measure_performance, start_capture_traces
 
 if TYPE_CHECKING:
     from types import ModuleType
@@ -264,6 +264,7 @@ def app_server(
 def app(page: Page, app_port: int) -> Page:
     """Fixture that opens the app."""
     page.goto(f"http://localhost:{app_port}/")
+    start_capture_traces(page)
     wait_for_app_loaded(page)
     return page
 
@@ -485,6 +486,7 @@ def app_theme(request) -> str:
 def themed_app(page: Page, app_port: int, app_theme: str) -> Page:
     """Fixture that opens the app with the given theme."""
     page.goto(f"http://localhost:{app_port}/?embed_options={app_theme}")
+    start_capture_traces(page)
     wait_for_app_loaded(page)
     return page
 
