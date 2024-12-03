@@ -16,6 +16,13 @@
 
 import { StPerformanceMark, StPerformanceMetric } from "./types"
 
+/**
+ * Type-safe version of `performance.measure` for Streamlit usage.
+ * @param measure - The name of the measure.
+ * @param startOrMeasureOptions - The start mark or measure options.
+ * @param endMark - The optional end mark.
+ * @returns {void}
+ */
 export const measure = (
   measure: StPerformanceMetric,
   startOrMeasureOptions?: StPerformanceMark | PerformanceMeasureOptions,
@@ -23,7 +30,12 @@ export const measure = (
 ): PerformanceMeasure => {
   return performance.measure(measure, startOrMeasureOptions, endMark)
 }
-
+/**
+ * Type-safe version of `performance.mark` for Streamlit usage. Marks a
+ * performance entry with the given name.
+ * @param mark - The name of the performance mark.
+ * @returns The created PerformanceMark object.
+ */
 export const mark = (mark: StPerformanceMark): PerformanceMark => {
   return performance.mark(mark)
 }
