@@ -283,7 +283,7 @@ class AppSession:
         """Process a BackMsg."""
         try:
             msg_type = msg.WhichOneof("type")
-
+            print(f"[DEBUG] handle_backmsg {msg}")
             if msg_type == "rerun_script":
                 if msg.debug_last_backmsg_id:
                     self._debug_last_backmsg_id = msg.debug_last_backmsg_id
@@ -356,6 +356,11 @@ class AppSession:
 
         if client_state:
             fragment_id = client_state.fragment_id
+            if fragment_id and not self._fragment_storage.contains(fragment_id):
+                _LOGGER.error(
+                    f"[DEBUG]: The fragment with id {fragment_id} does not exist anymore - it was probably removed"
+                )
+                return
 
             rerun_data = RerunData(
                 client_state.query_string,
@@ -572,7 +577,6 @@ class AppSession:
         if event == ScriptRunnerEvent.SCRIPT_STARTED:
             if self._state != AppSessionState.SHUTDOWN_REQUESTED:
                 self._state = AppSessionState.APP_IS_RUNNING
-
             assert (
                 page_script_hash is not None
             ), "page_script_hash must be set for the SCRIPT_STARTED event"

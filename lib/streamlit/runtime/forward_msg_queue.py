@@ -103,7 +103,7 @@ class ForwardMsgQueue:
             self._queue = []
         else:
             self._queue = [
-                _update_script_finished_message(msg)
+                _update_script_finished_message(msg, fragment_ids_this_run is not None)
                 for msg in self._queue
                 if msg.WhichOneof("type")
                 in {
@@ -195,7 +195,9 @@ def _maybe_compose_deltas(old_delta: Delta, new_delta: Delta) -> Delta | None:
     return None
 
 
-def _update_script_finished_message(msg: ForwardMsg) -> ForwardMsg:
+def _update_script_finished_message(
+    msg: ForwardMsg, is_fragment_run: bool
+) -> ForwardMsg:
     """
     When we are here, the message queue is cleared from non-lifecycle messages
     before they were flushed to the browser.
@@ -207,6 +209,9 @@ def _update_script_finished_message(msg: ForwardMsg) -> ForwardMsg:
     Otherwise, a `FINISHED_SUCCESSFULLY` message might trigger a reset of widget
     states on the frontend.
     """
-    if msg.WhichOneof("type") == "script_finished":
+    if msg.WhichOneof("type") == "script_finished" and (
+        is_fragment_run is False
+        or msg.script_finished != ForwardMsg.ScriptFinishedStatus.FINISHED_SUCCESSFULLY
+    ):
         msg.script_finished = ForwardMsg.ScriptFinishedStatus.FINISHED_EARLY_FOR_RERUN
     return msg

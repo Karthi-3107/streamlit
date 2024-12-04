@@ -84,6 +84,11 @@ class FragmentStorage(Protocol):
         """Return whether the given key is present in this FragmentStorage."""
         raise NotImplementedError
 
+    @abstractmethod
+    def contained_in_the_past(self, key: str) -> bool:
+        """Return whether the given key was present in this FragmentStorage in the past."""
+        raise NotImplementedError
+
 
 # NOTE: Ideally, we'd like to add a MemoryFragmentStorageStatProvider implementation to
 # keep track of memory usage due to fragments, but doing something like this ends up
@@ -97,8 +102,9 @@ class MemoryFragmentStorage(FragmentStorage):
     the FragmentStorage protocol.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._fragments: dict[str, Fragment] = {}
+        self._previous_fragment_ids: set[str] = set()
 
     # Weirdly, we have to define this above the `set` method, or mypy gets it confused
     # with the `set` type of `new_fragments_ids`.
@@ -119,6 +125,7 @@ class MemoryFragmentStorage(FragmentStorage):
             raise FragmentStorageKeyError(str(e))
 
     def set(self, key: str, value: Fragment) -> None:
+        self._previous_fragment_ids.add(key)
         self._fragments[key] = value
 
     def delete(self, key: str) -> None:
@@ -129,6 +136,9 @@ class MemoryFragmentStorage(FragmentStorage):
 
     def contains(self, key: str) -> bool:
         return key in self._fragments
+
+    def contained_in_the_past(self, key: str) -> bool:
+        return key in self._previous_fragment_ids
 
 
 def _fragment(

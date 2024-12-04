@@ -52,6 +52,7 @@ class RerunData:
     # The queue of fragment_ids waiting to be run.
     fragment_id_queue: list[str] = field(default_factory=list)
     is_fragment_scoped_rerun: bool = False
+    # set to true when a script is rerun by the fragment auto-rerun mechanism
     is_auto_rerun: bool = False
 
     def __repr__(self) -> str:
@@ -176,6 +177,9 @@ class ScriptRequests:
         """
 
         with self._lock:
+            print(
+                f"[DEBUG] current_rerun_data: {self._rerun_data} | request_rerun: {new_data} | state: {self._state}"
+            )
             if self._state == ScriptRequestType.STOP:
                 # We can't rerun after being stopped.
                 return False

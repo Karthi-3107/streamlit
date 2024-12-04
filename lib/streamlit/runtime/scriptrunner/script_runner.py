@@ -553,16 +553,24 @@ class ScriptRunner:
                                 wrapped_fragment()
 
                             except FragmentStorageKeyError:
+                                error_msg = (
+                                    f"Could not find fragment with id {fragment_id}"
+                                )
+                                print(f"[DEBUG] Rerun {rerun_data}")
+                                if self._fragment_storage.contained_in_the_past(
+                                    fragment_id
+                                ):
+                                    # if fragment_id == rerun_data.fragment_id:
+                                    _LOGGER.warning(error_msg)
                                 # Only raise an error if the fragment is not an
                                 # auto_rerun. If it is an auto_rerun, we might have a
                                 # race condition where the fragment_id is removed
                                 # but the webapp sends a rerun request before the
                                 # removal information has reached the web app
                                 # (see https://github.com/streamlit/streamlit/issues/9080).
-                                if not rerun_data.is_auto_rerun:
-                                    raise RuntimeError(
-                                        f"Could not find fragment with id {fragment_id}"
-                                    )
+                                elif fragment_id and not rerun_data.is_auto_rerun:
+                                    raise RuntimeError(error_msg)
+
                             except (RerunException, StopException) as e:
                                 # The wrapped_fragment function is executed
                                 # inside of a exec_func_with_error_handling call, so
