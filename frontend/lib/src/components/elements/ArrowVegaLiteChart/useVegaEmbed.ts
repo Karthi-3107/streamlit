@@ -48,7 +48,7 @@ export function useVegaEmbed(
   containerRef: RefObject<HTMLDivElement>,
   element: VegaLiteChartElement
 ): UseVegaEmbedOutput {
-  const vegaView = useRef<VegaView | null>(null)
+  const [vegaView, setVegaView] = useState<VegaView | null>(null)
   const vegaFinalizer = useRef<(() => void) | null>(null)
   const defaultDataName = useRef<string>(DEFAULT_DATA_NAME)
   const [error, setError] = useState<Error | null>(null)
@@ -60,7 +60,7 @@ export function useVegaEmbed(
     }
 
     vegaFinalizer.current = null
-    vegaView.current = null
+    setVegaView(null)
   }, [])
 
   const createView = useCallback(
@@ -94,7 +94,7 @@ export function useVegaEmbed(
           options
         )
 
-        vegaView.current = view
+        setVegaView(view)
 
         // TODO: implement maybeConfigureSelections
         // Try to load the previous state of the chart from the element state.
@@ -103,7 +103,7 @@ export function useVegaEmbed(
         const viewState = widgetMgr.getElementState(chartId, "viewState")
         if (notNullOrUndefined(viewState)) {
           try {
-            vegaView.current = vegaView.current.setState(viewState)
+            setVegaView(view.setState(viewState))
           } catch (e) {
             logWarning("Failed to restore view state", e)
           }
@@ -136,8 +136,8 @@ export function useVegaEmbed(
 
         // Fix bug where the "..." menu button overlaps with charts where width is
         // set to -1 on first load.
-        vegaView.current.resize().runAsync()
-        vegaView.current = view
+        view.resize().runAsync()
+        setVegaView(view)
       } catch (e) {
         setError(ensureError(e))
       }
@@ -149,7 +149,7 @@ export function useVegaEmbed(
 
   const updateData = useCallback(
     (name: string, prevData: Quiver | null, data: Quiver | null): void => {
-      if (!vegaView.current) {
+      if (!vegaView) {
         return
       }
 
@@ -157,7 +157,7 @@ export function useVegaEmbed(
         // The new data is empty, so we remove the dataset from the
         // chart view if the named dataset exists.
         try {
-          vegaView.current.remove(name, truthy)
+          vegaView.remove(name, truthy)
         } finally {
           return
         }
@@ -165,7 +165,7 @@ export function useVegaEmbed(
 
       if (!prevData || prevData.data.numRows === 0) {
         // The previous data was empty, so we just insert the new data.
-        vegaView.current.insert(name, getDataArray(data))
+        vegaView.insert(name, getDataArray(data))
         return
       }
 
@@ -186,11 +186,11 @@ export function useVegaEmbed(
       ) {
         if (prevNumRows < numRows) {
           // Insert the new rows.
-          vegaView.current.insert(name, getDataArray(data, prevNumRows))
+          vegaView.insert(name, getDataArray(data, prevNumRows))
         }
       } else {
         // Clean the dataset and insert from scratch.
-        vegaView.current.data(name, getDataArray(data))
+        vegaView.data(name, getDataArray(data))
         logMessage(
           `Had to clear the ${name} dataset before inserting data through Vega view.`
         )
@@ -225,12 +225,12 @@ export function useVegaEmbed(
       }
     }
 
-    vegaView.current?.resize().runAsync()
+    vegaView?.resize().runAsync()
     prevElement.current = element
     // TODO: Update to match React best practices
     // eslint-disable-next-line react-compiler/react-compiler
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [element.data, updateData])
 
-  return { error, vegaView: vegaView.current, createView, finalizeView }
+  return { error, vegaView: vegaView, createView, finalizeView }
 }

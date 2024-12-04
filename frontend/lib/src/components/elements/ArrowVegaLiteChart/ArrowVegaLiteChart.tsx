@@ -64,32 +64,23 @@ const ArrowVegaLiteChart: FC<Props> = ({
     element
   )
   const maybeConfigureSelections = useVegaLiteSelections(
-    vegaView,
     element,
     widgetMgr,
     fragmentId
   )
 
   useEffect(() => {
-    if (vegaView) {
-      logMessage("Vega spec changed.")
-    } else {
-      logMessage("View does not exist yet")
-    }
-
     createView(processedSpec, widgetMgr)
-    maybeConfigureSelections()
 
     return finalizeView()
     // The spec will change if the visual aspects change (width, height, theme)
-  }, [
-    processedSpec,
-    createView,
-    finalizeView,
-    vegaView,
-    maybeConfigureSelections,
-    widgetMgr,
-  ])
+  }, [processedSpec, createView, finalizeView, widgetMgr])
+
+  useEffect(() => {
+    if (vegaView) {
+      maybeConfigureSelections(vegaView)
+    }
+  }, [vegaView, maybeConfigureSelections])
 
   if (error) {
     throw error

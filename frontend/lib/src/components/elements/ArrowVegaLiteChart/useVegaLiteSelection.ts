@@ -43,11 +43,10 @@ export interface VegaLiteState {
 }
 
 export const useVegaLiteSelections = (
-  vegaView: VegaView | null,
   element: VegaLiteChartElement,
   widgetMgr: WidgetStateManager,
   fragmentId?: string
-): (() => void) => {
+): ((view: VegaView | null) => void) => {
   const { id: chartId, selectionMode: inputSelectionMode, formId } = element
   const selectionMode = useMemo(() => {
     return inputSelectionMode as string[]
@@ -56,78 +55,81 @@ export const useVegaLiteSelections = (
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(element.selectionMode)])
 
-  const maybeConfigureSelections = useCallback((): void => {
-    // Add listeners for all selection events. Find out more here:
-    // https://vega.github.io/vega/docs/api/view/#view_addSignalListener
-    selectionMode.forEach((param, _index) => {
-      vegaView?.addSignalListener(
-        param,
-        debounce(DEBOUNCE_TIME_MS, (name: string, value: SignalValue) => {
-          // Store the current chart selection state with the widget manager so that it
-          // can be used for restoring the state when the component unmounted and
-          // created again. This can happen when elements are added before it within
-          // the delta path. The viewState is only stored in the frontend, and not
-          // synced to the backend.
-          const viewState = vegaView?.getState({
-            // There are also `signals` data, but I believe its
-            // not relevant for restoring the selection state.
-            data: (name?: string, _operator?: any) => {
-              // Vega lite stores the selection state in a <param name>_store parameter
-              // under `data` that can be retrieved via the getState method.
-              // https://vega.github.io/vega/docs/api/view/#view_getState
-              return selectionMode.some(mode => `${mode}_store` === name)
-            },
-            // Don't include subcontext data since it will lead to exceptions
-            // when loading the state.
-            recurse: false,
-          })
-
-          if (notNullOrUndefined(viewState)) {
-            widgetMgr.setElementState(chartId, "viewState", viewState)
-          }
-
-          // If selection encodings are correctly specified, vega-lite will return
-          // a list of selected points within the vlPoint.or property:
-          // https://github.com/vega/altair/blob/f1b4e2c84da2fba220022c8a285cc8280f824ed8/altair/utils/selection.py#L50
-          // We want to just return this list of points instead of the entire object
-          // since the other parts of the selection object are not useful.
-          let processedSelection = value
-          if ("vlPoint" in value && "or" in value.vlPoint) {
-            processedSelection = value.vlPoint.or
-          }
-
-          const widgetInfo: WidgetInfo = { id: chartId, formId }
-
-          // Get the current widget state
-          const currentWidgetState = JSON.parse(
-            widgetMgr.getStringValue(widgetInfo) || "{}"
-          )
-
-          // Update the component-internal selection state
-          const updatedSelections = {
-            selection: {
-              ...(currentWidgetState?.selection || {}),
-              [name]: processedSelection || {},
-            } as VegaLiteState,
-          }
-
-          // Update the widget state if the selection state has changed
-          // compared to the last update. This selection state will be synced
-          // with the backend.
-          if (!isEqual(currentWidgetState, updatedSelections)) {
-            widgetMgr.setStringValue(
-              widgetInfo,
-              JSON.stringify(updatedSelections),
-              {
-                fromUi: true,
+  const maybeConfigureSelections = useCallback(
+    (vegaView: VegaView | null): void => {
+      // Add listeners for all selection events. Find out more here:
+      // https://vega.github.io/vega/docs/api/view/#view_addSignalListener
+      selectionMode.forEach((param, _index) => {
+        vegaView?.addSignalListener(
+          param,
+          debounce(DEBOUNCE_TIME_MS, (name: string, value: SignalValue) => {
+            // Store the current chart selection state with the widget manager so that it
+            // can be used for restoring the state when the component unmounted and
+            // created again. This can happen when elements are added before it within
+            // the delta path. The viewState is only stored in the frontend, and not
+            // synced to the backend.
+            const viewState = vegaView?.getState({
+              // There are also `signals` data, but I believe its
+              // not relevant for restoring the selection state.
+              data: (name?: string, _operator?: any) => {
+                // Vega lite stores the selection state in a <param name>_store parameter
+                // under `data` that can be retrieved via the getState method.
+                // https://vega.github.io/vega/docs/api/view/#view_getState
+                return selectionMode.some(mode => `${mode}_store` === name)
               },
-              fragmentId
+              // Don't include subcontext data since it will lead to exceptions
+              // when loading the state.
+              recurse: false,
+            })
+
+            if (notNullOrUndefined(viewState)) {
+              widgetMgr.setElementState(chartId, "viewState", viewState)
+            }
+
+            // If selection encodings are correctly specified, vega-lite will return
+            // a list of selected points within the vlPoint.or property:
+            // https://github.com/vega/altair/blob/f1b4e2c84da2fba220022c8a285cc8280f824ed8/altair/utils/selection.py#L50
+            // We want to just return this list of points instead of the entire object
+            // since the other parts of the selection object are not useful.
+            let processedSelection = value
+            if ("vlPoint" in value && "or" in value.vlPoint) {
+              processedSelection = value.vlPoint.or
+            }
+
+            const widgetInfo: WidgetInfo = { id: chartId, formId }
+
+            // Get the current widget state
+            const currentWidgetState = JSON.parse(
+              widgetMgr.getStringValue(widgetInfo) || "{}"
             )
-          }
-        })
-      )
-    })
-  }, [chartId, vegaView, selectionMode, widgetMgr, formId, fragmentId])
+
+            // Update the component-internal selection state
+            const updatedSelections = {
+              selection: {
+                ...(currentWidgetState?.selection || {}),
+                [name]: processedSelection || {},
+              } as VegaLiteState,
+            }
+
+            // Update the widget state if the selection state has changed
+            // compared to the last update. This selection state will be synced
+            // with the backend.
+            if (!isEqual(currentWidgetState, updatedSelections)) {
+              widgetMgr.setStringValue(
+                widgetInfo,
+                JSON.stringify(updatedSelections),
+                {
+                  fromUi: true,
+                },
+                fragmentId
+              )
+            }
+          })
+        )
+      })
+    },
+    [chartId, selectionMode, widgetMgr, formId, fragmentId]
+  )
 
   const onFormCleared = useCallback(() => {
     const emptySelectionState: VegaLiteState = {
