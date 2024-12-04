@@ -20,10 +20,11 @@ import { truthy, View as VegaView } from "vega"
 import embed from "vega-embed"
 import { expressionInterpreter } from "vega-interpreter"
 
-import { WidgetStateManager } from "@streamlit/lib"
+import { WidgetStateManager } from "@streamlit/lib/src/WidgetStateManager"
 import { Quiver } from "@streamlit/lib/src/dataframes/Quiver"
 import { ensureError } from "@streamlit/lib/src/util/ErrorHandling"
-import { logMessage } from "@streamlit/lib/src/util/log"
+import { logMessage, logWarning } from "@streamlit/lib/src/util/log"
+import { notNullOrUndefined } from "@streamlit/lib/src/util/utils"
 
 import {
   dataIsAnAppendOfPrev,
@@ -39,7 +40,7 @@ const DEFAULT_DATA_NAME = "source"
 interface UseVegaEmbedOutput {
   error: Error | null
   vegaView: VegaView | null
-  createView: (spec: any) => Promise<void>
+  createView: (spec: any, widgetMgr: WidgetStateManager) => Promise<void>
   finalizeView: () => void
 }
 
@@ -52,7 +53,7 @@ export function useVegaEmbed(
   const defaultDataName = useRef<string>(DEFAULT_DATA_NAME)
   const [error, setError] = useState<Error | null>(null)
 
-  const { data, datasets } = element
+  const { id: chartId, data, datasets } = element
   const finalizeView = useCallback(() => {
     if (vegaFinalizer.current) {
       vegaFinalizer.current()
@@ -99,10 +100,7 @@ export function useVegaEmbed(
         // Try to load the previous state of the chart from the element state.
         // This is useful to restore the selection state when the component is re-mounted
         // or when its put into fullscreen mode.
-        const viewState = widgetMgr.getElementState(
-          chartId,
-          "viewState"
-        )(chartId)
+        const viewState = widgetMgr.getElementState(chartId, "viewState")
         if (notNullOrUndefined(viewState)) {
           try {
             vegaView.current = vegaView.current.setState(viewState)
@@ -144,7 +142,7 @@ export function useVegaEmbed(
         setError(ensureError(e))
       }
     },
-    [containerRef, finalizeView, datasets, data]
+    [chartId, containerRef, finalizeView, datasets, data]
   )
 
   const prevElement = useRef<VegaLiteChartElement | null>(null)

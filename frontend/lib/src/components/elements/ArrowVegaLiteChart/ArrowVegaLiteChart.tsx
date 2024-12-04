@@ -57,11 +57,9 @@ const ArrowVegaLiteChart: FC<Props> = ({
     expand,
     collapse,
   } = useRequiredContext(ElementFullscreenContext)
-
   const containerRef = useRef<HTMLDivElement | null>(null)
-
   const processedSpec = useVegaSpecPreprocessor(element)
-  const { error, vegaView, finalizeView, createView } = useVegaEmbed(
+  const { error, vegaView, createView, finalizeView } = useVegaEmbed(
     containerRef,
     element
   )
@@ -79,7 +77,7 @@ const ArrowVegaLiteChart: FC<Props> = ({
       logMessage("View does not exist yet")
     }
 
-    createView(processedSpec)
+    createView(processedSpec, widgetMgr)
     maybeConfigureSelections()
 
     return finalizeView()
@@ -90,6 +88,7 @@ const ArrowVegaLiteChart: FC<Props> = ({
     finalizeView,
     vegaView,
     maybeConfigureSelections,
+    widgetMgr,
   ])
 
   if (error) {

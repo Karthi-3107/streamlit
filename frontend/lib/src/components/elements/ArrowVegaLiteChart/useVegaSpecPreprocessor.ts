@@ -154,8 +154,13 @@ export const useVegaSpecPreprocessor = (
     spec: inputSpec,
     useContainerWidth,
     vegaLiteTheme,
-    selectionMode,
+    selectionMode: inputSelectionMode,
   } = element
+
+  const selectionMode = useMemo(() => {
+    return inputSelectionMode as string[]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(inputSelectionMode)])
 
   return useMemo(
     () =>
@@ -173,7 +178,7 @@ export const useVegaSpecPreprocessor = (
       inputSpec,
       useContainerWidth,
       vegaLiteTheme,
-      JSON.stringify(selectionMode),
+      selectionMode,
       theme,
       isFullScreen,
       width,
