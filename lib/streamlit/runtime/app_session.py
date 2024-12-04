@@ -283,7 +283,6 @@ class AppSession:
         """Process a BackMsg."""
         try:
             msg_type = msg.WhichOneof("type")
-            print(f"[DEBUG] handle_backmsg {msg}")
             if msg_type == "rerun_script":
                 if msg.debug_last_backmsg_id:
                     self._debug_last_backmsg_id = msg.debug_last_backmsg_id
@@ -358,7 +357,8 @@ class AppSession:
             fragment_id = client_state.fragment_id
             if fragment_id and not self._fragment_storage.contains(fragment_id):
                 _LOGGER.error(
-                    f"[DEBUG]: The fragment with id {fragment_id} does not exist anymore - it was probably removed"
+                    f"The fragment with id {fragment_id} does not exist anymore - "
+                    "it might have been removed during a preceding full-app rerun."
                 )
                 return
 

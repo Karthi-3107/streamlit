@@ -556,7 +556,6 @@ class ScriptRunner:
                                 error_msg = (
                                     f"Could not find fragment with id {fragment_id}"
                                 )
-                                print(f"[DEBUG] Rerun {rerun_data}")
                                 if self._fragment_storage.contained_in_the_past(
                                     fragment_id
                                 ):

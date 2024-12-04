@@ -177,9 +177,6 @@ class ScriptRequests:
         """
 
         with self._lock:
-            print(
-                f"[DEBUG] current_rerun_data: {self._rerun_data} | request_rerun: {new_data} | state: {self._state}"
-            )
             if self._state == ScriptRequestType.STOP:
                 # We can't rerun after being stopped.
                 return False
