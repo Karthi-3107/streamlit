@@ -65,6 +65,11 @@ class FragmentStorage(Protocol):
         raise NotImplementedError
 
     @abstractmethod
+    def clear_past_ids(self) -> None:
+        """Remove all fragments from the past-store saved in this FragmentStorage."""
+        raise NotImplementedError
+
+    @abstractmethod
     def get(self, key: str) -> Fragment:
         """Returns the stored fragment for the given key."""
         raise NotImplementedError
@@ -117,6 +122,9 @@ class MemoryFragmentStorage(FragmentStorage):
         for fid in fragment_ids:
             if fid not in new_fragment_ids:
                 del self._fragments[fid]
+
+    def clear_past_ids(self) -> None:
+        self._previous_fragment_ids.clear()
 
     def get(self, key: str) -> Fragment:
         try:

@@ -412,6 +412,7 @@ class ScriptRunnerTest(AsyncTestCase):
 
         scriptrunner = TestScriptRunner("good_script.py")
         scriptrunner._fragment_storage.set("my_fragment", fragment)
+        scriptrunner._fragment_storage.clear_past_ids()
 
         scriptrunner.request_rerun(RerunData(fragment_id_queue=["my_fragment"]))
         scriptrunner.start()
@@ -419,6 +420,22 @@ class ScriptRunnerTest(AsyncTestCase):
 
         ex = patched_handle_exception.call_args[0][0]
         assert isinstance(ex, RuntimeError)
+
+    @patch("streamlit.runtime.scriptrunner.exec_code.handle_uncaught_app_exception")
+    def test_FragmentStorageKeyError_ignored_when_fragmentid_existed_in_the_past(
+        self, patched_handle_exception
+    ):
+        fragment = MagicMock()
+        fragment.side_effect = FragmentStorageKeyError("kaboom")
+
+        scriptrunner = TestScriptRunner("good_script.py")
+        scriptrunner._fragment_storage.set("my_fragment", fragment)
+
+        scriptrunner.request_rerun(RerunData(fragment_id_queue=["my_fragment"]))
+        scriptrunner.start()
+        scriptrunner.join()
+
+        patched_handle_exception.assert_not_called()
 
     @patch("streamlit.runtime.scriptrunner.exec_code.handle_uncaught_app_exception")
     def test_FragmentStorageKeyError_for_autoRerun_is_not_raised(
