@@ -51,6 +51,8 @@ export const useVegaLiteSelections = (
   const { id: chartId, selectionMode: inputSelectionMode, formId } = element
   const selectionMode = useMemo(() => {
     return inputSelectionMode as string[]
+    // TODO: Update to match React best practices
+    // eslint-disable-next-line react-compiler/react-compiler
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(element.selectionMode)])
 
