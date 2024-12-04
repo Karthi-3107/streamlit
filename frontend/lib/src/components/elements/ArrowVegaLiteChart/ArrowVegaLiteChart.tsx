@@ -19,7 +19,6 @@ import React, { FC, useEffect, useRef } from "react"
 import { Global } from "@emotion/react"
 
 import { WidgetStateManager } from "@streamlit/lib/src/WidgetStateManager"
-import { logMessage } from "@streamlit/lib/src/util/log"
 import Toolbar, {
   StyledToolbarElementContainer,
 } from "@streamlit/lib/src/components/shared/Toolbar"
