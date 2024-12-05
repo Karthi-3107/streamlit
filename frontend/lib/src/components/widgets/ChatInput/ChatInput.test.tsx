@@ -49,10 +49,10 @@ const getProps = (
   }),
   // @ts-expect-error
   uploadClient: {
-    uploadFile: jest.fn().mockImplementation(() => {
+    uploadFile: vi.fn().mockImplementation(() => {
       return Promise.resolve()
     }),
-    fetchFileURLs: jest.fn().mockImplementation((acceptedFiles: File[]) => {
+    fetchFileURLs: vi.fn().mockImplementation((acceptedFiles: File[]) => {
       return Promise.resolve(
         acceptedFiles.map(file => {
           return new FileURLsProto({
@@ -63,7 +63,7 @@ const getProps = (
         })
       )
     }),
-    deleteFile: jest.fn(),
+    deleteFile: vi.fn(),
   },
   ...widgetProps,
 })
