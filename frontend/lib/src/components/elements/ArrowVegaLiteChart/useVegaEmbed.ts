@@ -196,7 +196,7 @@ export function useVegaEmbed(
         )
       }
     },
-    []
+    [vegaView]
   )
 
   useEffect(() => {
