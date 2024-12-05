@@ -53,6 +53,8 @@ function handleEntries(list) {
 new PerformanceObserver(handleEntries).observe({
     entryTypes: ['longtask', 'measure', 'mark', 'navigation', 'paint', 'long-animation-frame'],
 });
+
+window.__capturedTraces['profiles'] = window.__streamlit_profiles__ || [];
 """
 
 GET_CAPTURED_TRACES_SCRIPT = """
@@ -105,22 +107,6 @@ def measure_performance(
         )["result"]
         captured_traces = captured_traces_result.get("value", "{}")
         parsed_captured_traces = json.loads(captured_traces)
-
-        # Find the object with name 'LayoutCount'
-        layout_count_metric = next(
-            (
-                metric
-                for metric in metrics_response.get("metrics", [])
-                if metric.get("name") == "LayoutCount"
-            ),
-            None,
-        )
-        # If layout_count_metric == 0, then it means the test does not handle
-        # rendering the page, thus any performance metrics would be
-        # irrelevant/useless. Do not write the file in this case to reduce
-        # noise.
-        if layout_count_metric is None or layout_count_metric.get("value", 0) == 0:
-            return
 
         # Ensure the directory exists
         os.makedirs("./performance-results", exist_ok=True)

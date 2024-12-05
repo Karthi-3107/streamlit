@@ -62,6 +62,16 @@ declare global {
       LIGHT_THEME: ICustomThemeConfig
       DARK_THEME: ICustomThemeConfig
     }
+    __streamlit_profiles__?: Record<
+      string,
+      {
+        phase: "mount" | "update" | "nested-update"
+        actualDuration: number
+        baseDuration: number
+        startTime: number
+        commitTime: number
+      }[]
+    >
   }
 }
 

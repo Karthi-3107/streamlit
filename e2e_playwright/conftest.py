@@ -737,10 +737,7 @@ def playwright_profiling(request, page: Page):
         yield
         return
 
-    with measure_performance(
-        page,
-        test_name=request.node.name,
-    ):
+    with measure_performance(page, test_name=request.node.name):
         yield
 
 

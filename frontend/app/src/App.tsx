@@ -192,6 +192,16 @@ declare global {
   interface Window {
     streamlitDebug: any
     iFrameResizer: any
+    __streamlit_profiles__?: Record<
+      string,
+      {
+        phase: "mount" | "update" | "nested-update"
+        actualDuration: number
+        baseDuration: number
+        startTime: number
+        commitTime: number
+      }[]
+    >
   }
 }
 
