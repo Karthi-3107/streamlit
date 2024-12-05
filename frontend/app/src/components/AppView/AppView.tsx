@@ -26,6 +26,7 @@ import {
   IGuestToHostMessage,
   LibContext,
   Logo,
+  Profiler,
   ScriptRunState,
   SessionInfo,
   StreamlitEndpoints,
@@ -40,7 +41,6 @@ import {
   StyledSidebarOpenContainer,
 } from "@streamlit/app/src/components/Sidebar/styled-components"
 import { AppContext } from "@streamlit/app/src/components/AppContext"
-import { Profiler } from "@streamlit/app/src/components/Profiler"
 
 import {
   StyledAppViewBlockContainer,

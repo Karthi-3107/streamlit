@@ -20,24 +20,21 @@ import React, {
   PropsWithChildren,
   Profiler as ReactProfiler,
   useCallback,
-  useEffect,
 } from "react"
+
+import { CircularBuffer } from "./CircularBuffer"
 
 export type ProfilerProps = PropsWithChildren<{
   id: string
 }>
 
 export const Profiler: FC<ProfilerProps> = ({ id, children }) => {
-  useEffect(() => {
-    window.__streamlit_profiles__ = window.__streamlit_profiles__ || {}
-  }, [])
-
   const handleRender = useCallback<ProfilerOnRenderCallback>(
     (id, phase, actualDuration, baseDuration, startTime, commitTime) => {
       window.__streamlit_profiles__ = window.__streamlit_profiles__ || {}
 
       window.__streamlit_profiles__[id] =
-        window.__streamlit_profiles__[id] || []
+        window.__streamlit_profiles__[id] || new CircularBuffer(1000)
 
       window.__streamlit_profiles__[id].push({
         phase,
