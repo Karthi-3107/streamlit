@@ -24,29 +24,45 @@ export class CircularBuffer<T> {
 
   private _index: number
 
-  private _hasWrapped: boolean
+  private _wrappedCount: number
 
+  /**
+   * Creates an instance of CircularBuffer.
+   * @param {number} size - The size of the buffer.
+   */
   constructor(size: number) {
     this._buffer = new Array(size)
     this._size = size
     this._index = 0
-    this._hasWrapped = false
+    this._wrappedCount = 0
   }
 
+  /**
+   * Adds a value to the buffer.
+   * @param {T} value - The value to add to the buffer.
+   */
   push(value: T): void {
     this._buffer[this._index] = value
     this._index = (this._index + 1) % this._size
 
     if (this._index === 0) {
-      this._hasWrapped = true
+      this._wrappedCount = this._wrappedCount + 1
     }
   }
 
-  get buffer(): T[] {
+  /**
+   * Gets the current state of the buffer.
+   * @returns {readonly T[]} The buffer array.
+   */
+  get buffer(): readonly T[] {
     return this._buffer
   }
 
-  get hasWrapped(): boolean {
-    return this._hasWrapped
+  /**
+   * Gets the total number of entries written to the buffer.
+   * @returns {number} The total number of written entries.
+   */
+  get totalWrittenEntries(): number {
+    return this._wrappedCount * this._size + this._index
   }
 }

@@ -28,6 +28,7 @@ import {
   AutoRerun,
   BackMsg,
   BaseUriParts,
+  CircularBuffer,
   ComponentRegistry,
   Config,
   createFormsData,
@@ -194,13 +195,13 @@ declare global {
     iFrameResizer: any
     __streamlit_profiles__?: Record<
       string,
-      {
+      CircularBuffer<{
         phase: "mount" | "update" | "nested-update"
         actualDuration: number
         baseDuration: number
         startTime: number
         commitTime: number
-      }[]
+      }>
     >
   }
 }

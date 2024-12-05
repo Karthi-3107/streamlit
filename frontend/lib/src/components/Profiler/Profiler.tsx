@@ -22,7 +22,7 @@ import React, {
   useCallback,
 } from "react"
 
-import { CircularBuffer } from "./CircularBuffer"
+import { CircularBuffer } from "@streamlit/lib"
 
 export type ProfilerProps = PropsWithChildren<{
   id: string
@@ -34,10 +34,7 @@ export const Profiler: FC<ProfilerProps> = ({ id, children }) => {
       window.__streamlit_profiles__ = window.__streamlit_profiles__ || {}
 
       window.__streamlit_profiles__[id] =
-        window.__streamlit_profiles__[id] ||
-        new CircularBuffer<(typeof window.__streamlit_profiles__)[string]>(
-          1000
-        )
+        window.__streamlit_profiles__[id] || new CircularBuffer(1000)
 
       window.__streamlit_profiles__[id].push({
         phase,
