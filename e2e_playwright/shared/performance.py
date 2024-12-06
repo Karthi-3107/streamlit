@@ -24,17 +24,6 @@ if TYPE_CHECKING:
     from playwright.sync_api import Page
 
 
-@contextmanager
-def with_cdp_session(page: Page):
-    """
-    Create a new Chrome DevTools Protocol session.
-    Detach the session when the context manager exits.
-    """
-    client = page.context.new_cdp_session(page)
-    yield client
-    client.detach()
-
-
 # Observe long tasks, measure, marks, and paints with PerformanceObserver
 # @see https://developer.mozilla.org/en-US/docs/Web/API/PerformanceObserver
 CAPTURE_TRACES_SCRIPT = """
@@ -78,6 +67,22 @@ def start_capture_traces(page: Page):
     """
     if is_supported_browser(page):
         page.evaluate(CAPTURE_TRACES_SCRIPT)
+
+
+@contextmanager
+def with_cdp_session(page: Page):
+    """
+    Create a new Chrome DevTools Protocol session.
+    Detach the session when the context manager exits.
+    """
+    if not is_supported_browser(page):
+        raise RuntimeError(
+            "Chrome DevTools Protocol is only supported on Chromium-based browsers."
+        )
+
+    client = page.context.new_cdp_session(page)
+    yield client
+    client.detach()
 
 
 @contextmanager
