@@ -53,11 +53,13 @@ function handleEntries(list) {
 new PerformanceObserver(handleEntries).observe({
     entryTypes: ['longtask', 'measure', 'mark', 'navigation', 'paint', 'long-animation-frame'],
 });
-
-window.__capturedTraces['profiles'] = window.__streamlit_profiles__ || [];
 """
 
 GET_CAPTURED_TRACES_SCRIPT = """
+for (const [key, value] of Object.entries(window.__streamlit_profiles__)) {
+    window.__capturedTraces[key] = value.buffer.filter(Boolean);
+}
+
 JSON.stringify(window.__capturedTraces)
 """
 
