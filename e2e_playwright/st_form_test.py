@@ -22,10 +22,14 @@ from e2e_playwright.shared.app_utils import (
 )
 
 
-def test_form_performance(app: Page):
+def test_form_input_performance(app: Page):
+    """
+    Tests the amount of re-renders when typing in an input that is in a form.
+    """
     form_1 = app.get_by_test_id("stForm").nth(0)
-    form_1.get_by_test_id("stTextArea").locator("textarea").fill("bar")
-    form_1.get_by_test_id("stFormSubmitButton").last.click()
+    form_1.get_by_test_id("stTextArea").locator("textarea").press_sequentially(
+        "this is some text", delay=100
+    )
     wait_for_app_run(app)
 
 

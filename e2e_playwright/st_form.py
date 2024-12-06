@@ -16,8 +16,6 @@ from datetime import date, time
 
 import streamlit as st
 
-st.text_area("Text Area not in Form", value="foo")
-
 # Tests all widgets, sans file_uploader, color picker, camera input and data editor,
 # inside a form. These widgets are a lot more complicated to test, and
 # are tested separately within the e2e tests for those components.
