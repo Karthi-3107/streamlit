@@ -210,6 +210,15 @@ def _update_script_finished_message(
     states on the frontend.
     """
     if msg.WhichOneof("type") == "script_finished" and (
+        # If this is not a fragment run (= full app run), its okay to change the
+        # script_finished type to FINISHED_EARLY_FOR_RERUN because another full app run
+        # is about to start.
+        # If this is a fragment run, it is allowed to change the state of
+        # all script_finished states except for FINISHED_SUCCESSFULLY, which we use to
+        # indicate that a full app run has finished successfully (in other words, a
+        # fragment should not modify the finished status of a full app run, because
+        # the fragment finished state is different and the frontend might not trigger
+        # cleanups etc. correctly).
         is_fragment_run is False
         or msg.script_finished != ForwardMsg.ScriptFinishedStatus.FINISHED_SUCCESSFULLY
     ):
