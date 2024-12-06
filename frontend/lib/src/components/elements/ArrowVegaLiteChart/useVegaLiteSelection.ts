@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { useCallback, useMemo } from "react"
+import { useCallback } from "react"
 
 import { SignalValue, View as VegaView } from "vega"
 import isEqual from "lodash/isEqual"
@@ -47,13 +47,7 @@ export const useVegaLiteSelections = (
   widgetMgr: WidgetStateManager,
   fragmentId?: string
 ): ((view: VegaView | null) => void) => {
-  const { id: chartId, selectionMode: inputSelectionMode, formId } = element
-  const selectionMode = useMemo(() => {
-    return inputSelectionMode as string[]
-    // TODO: Update to match React best practices
-    // eslint-disable-next-line react-compiler/react-compiler
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(element.selectionMode)])
+  const { id: chartId, formId, selectionMode } = element
 
   const maybeConfigureSelections = useCallback(
     (vegaView: VegaView | null): void => {

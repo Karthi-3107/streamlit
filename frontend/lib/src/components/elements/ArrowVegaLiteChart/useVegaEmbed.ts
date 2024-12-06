@@ -33,9 +33,59 @@ import {
   getDataSets,
   getInlineData,
   VegaLiteChartElement,
+  WrappedNamedDataset,
 } from "./arrowUtils"
 
 const DEFAULT_DATA_NAME = "source"
+
+enum ChangeState {
+  NO_CHANGE,
+  REMOVED,
+  EXTENDED,
+  ADDED,
+  DIFFERENT_DATA,
+}
+
+function classifyDataChange(
+  prevData: Quiver | null,
+  data: Quiver | null
+): ChangeState {
+  if (!data || data.data.numRows === 0) {
+    // The new data is empty, so we remove the dataset from the
+    // chart view if the named dataset exists.
+    return ChangeState.REMOVED
+  }
+
+  if (!prevData || prevData.data.numRows === 0) {
+    // The previous data was empty, so we just insert the new data.
+    return ChangeState.ADDED
+  }
+
+  const { dataRows: prevNumRows, dataColumns: prevNumCols } =
+    prevData.dimensions
+  const { dataRows: numRows, dataColumns: numCols } = data.dimensions
+
+  // Check if dataframes have same "shape" but the new one has more rows.
+  if (
+    dataIsAnAppendOfPrev(
+      prevData,
+      prevNumRows,
+      prevNumCols,
+      data,
+      numRows,
+      numCols
+    )
+  ) {
+    if (prevNumRows < numRows) {
+      // Insert the new rows.
+      return ChangeState.EXTENDED
+    }
+
+    return ChangeState.NO_CHANGE
+  }
+
+  return ChangeState.DIFFERENT_DATA
+}
 
 interface UseVegaEmbedOutput {
   error: Error | null
@@ -56,7 +106,17 @@ export function useVegaEmbed(
   const defaultDataName = useRef<string>(DEFAULT_DATA_NAME)
   const [error, setError] = useState<Error | null>(null)
 
-  const { id: chartId, data, datasets } = element
+  const { id: chartId, data: inputData, datasets: inputDatasets } = element
+
+  const [data, setData] = useState<Quiver | null>(inputData)
+  const [datasets, setDatasets] =
+    useState<WrappedNamedDataset[]>(inputDatasets)
+
+  // We initialize to the same value as state because we do not want
+  // to trigger a change in the first render.
+  const prevData = useRef<Quiver | null>(data)
+  const prevDatasets = useRef<WrappedNamedDataset[]>(datasets)
+
   const finalizeView = useCallback(() => {
     if (vegaFinalizer.current) {
       vegaFinalizer.current()
@@ -102,8 +162,8 @@ export function useVegaEmbed(
         )
 
         vegaView.current = view
+        vegaFinalizer.current = finalize
 
-        // TODO: implement maybeConfigureSelections
         // Try to load the previous state of the chart from the element state.
         // This is useful to restore the selection state when the component is re-mounted
         // or when its put into fullscreen mode.
@@ -115,8 +175,6 @@ export function useVegaEmbed(
             logWarning("Failed to restore view state", e)
           }
         }
-
-        vegaFinalizer.current = finalize
 
         const dataArrays = getDataArrays(datasets ?? [])
 
@@ -155,7 +213,16 @@ export function useVegaEmbed(
     [chartId, finalizeView, datasets, data]
   )
 
-  const prevElement = useRef<VegaLiteChartElement | null>(null)
+  // We use state to store the data and datasets, so that we can trigger
+  // a render when we confirm that the data has changed.
+  useEffect(() => {
+    if (
+      classifyDataChange(prevData.current, inputData) !== ChangeState.NO_CHANGE
+    ) {
+      setData(inputData)
+      setDatasets(inputDatasets)
+    }
+  }, [inputData, inputDatasets])
 
   const updateData = useCallback(
     (name: string, prevData: Quiver | null, data: Quiver | null): void => {
@@ -206,19 +273,21 @@ export function useVegaEmbed(
         )
       }
     },
-    [vegaView]
+    []
   )
 
+  // Update the data only if the (now stabilized) data or datasets have changed
   useEffect(() => {
-    if (prevElement.current || data) {
-      updateData(
-        defaultDataName.current,
-        prevElement.current?.data ?? null,
-        data
-      )
+    // This prevents calling updateData on the first render.
+    if (!vegaView.current) {
+      return
     }
 
-    const prevDataSets = getDataSets(prevElement.current?.datasets ?? []) ?? {}
+    if (prevData.current || data) {
+      updateData(defaultDataName.current, prevData.current, data)
+    }
+
+    const prevDataSets = getDataSets(prevDatasets.current) ?? {}
     const dataSets = getDataSets(datasets) ?? {}
 
     for (const [name, dataset] of Object.entries(dataSets)) {
@@ -236,11 +305,10 @@ export function useVegaEmbed(
     }
 
     vegaView.current?.resize().runAsync()
-    prevElement.current = element
-    // TODO: Update to match React best practices
-    // eslint-disable-next-line react-compiler/react-compiler
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [element.data, updateData])
+
+    prevData.current = data
+    prevDatasets.current = datasets
+  }, [data, datasets, updateData])
 
   return { error, vegaView: vegaView.current, createView, finalizeView }
 }

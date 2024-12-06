@@ -14,14 +14,7 @@
  * limitations under the License.
  */
 
-import React, {
-  FC,
-  RefObject,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react"
+import React, { FC, useCallback, useEffect, useRef } from "react"
 
 import { Global } from "@emotion/react"
 
@@ -38,7 +31,7 @@ import {
   StyledVegaLiteChartContainer,
   StyledVegaLiteChartTooltips,
 } from "./styled-components"
-import { useVegaSpecPreprocessor } from "./useVegaSpecPreprocessor"
+import { useVegaElementPreprocessor } from "./useVegaElementPreprocessor"
 import { useVegaEmbed } from "./useVegaEmbed"
 import { useVegaLiteSelections } from "./useVegaLiteSelection"
 
@@ -50,14 +43,9 @@ export interface Props {
   disableFullscreenMode?: boolean
 }
 
-enum RenderState {
-  PENDING,
-  RENDERED,
-}
-
 const ArrowVegaLiteChart: FC<Props> = ({
   disableFullscreenMode,
-  element,
+  element: inputElement,
   fragmentId,
   widgetMgr,
 }) => {
@@ -69,38 +57,53 @@ const ArrowVegaLiteChart: FC<Props> = ({
     collapse,
   } = useRequiredContext(ElementFullscreenContext)
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const [renderedState, setRenderedState] = useState<RenderState>(
-    RenderState.PENDING
-  )
-  const { spec, selectionMode } = useVegaSpecPreprocessor(element)
+
+  // We preprocess the input vega element to do a two things:
+  // 1. Update the spec to handle Streamlit specific configurations such as
+  //    theming, container width, and full screen mode
+  // 2. Stabilize some aspects of the input element to detect changes in the
+  //    configuration of the chart since each element will always provide new references
+  //    Note: We do not stabilize data/datasets as that is managed by the embed.
+  const element = useVegaElementPreprocessor(inputElement)
+
+  // This hook is provides lifecycle functions for creating and removing the view.
+  // It also will update the view if the data changes (and not the spec)
   const { error, createView, finalizeView } = useVegaEmbed(element)
+
+  // This hook is responsible for providing the setup function for selections in the chart
   const maybeConfigureSelections = useVegaLiteSelections(
     element,
     widgetMgr,
     fragmentId
   )
 
-  const setupView = useCallback(
-    async (containerRef: RefObject<HTMLDivElement>) => {
-      const vegaView = await createView(containerRef, spec, widgetMgr)
-      if (vegaView) {
-        maybeConfigureSelections(vegaView)
-      }
+  const { spec } = element
+
+  const setupView = useCallback(async () => {
+    const vegaView = await createView(containerRef, spec, widgetMgr)
+    if (vegaView) {
+      maybeConfigureSelections(vegaView)
+    }
+  }, [spec, createView, maybeConfigureSelections, widgetMgr])
+
+  // Once we receive the element for the container, we can render the vega chart
+  const setContainerRef = useCallback(
+    async (el: HTMLDivElement) => {
+      containerRef.current = el
+
+      setupView()
     },
-    [spec, widgetMgr, selectionMode]
+    [setupView]
   )
 
-  const setContainerRef = useCallback(async (el: HTMLDivElement) => {
-    containerRef.current = el
-
-    setupView(containerRef)
-  }, [])
-
+  // If ever the view changes, or the component unmounts, we want to finalize the view
   useEffect(() => {
-    setupView(containerRef)
+    if (containerRef.current) {
+      setupView()
+    }
 
     return finalizeView
-  }, [setupView, finalizeView])
+  }, [finalizeView, setupView, width, height])
 
   if (error) {
     throw error

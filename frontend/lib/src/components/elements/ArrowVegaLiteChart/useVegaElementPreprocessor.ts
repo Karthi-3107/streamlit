@@ -140,14 +140,9 @@ const generateSpec = (
   return spec
 }
 
-interface VegaSpecPreprocessorResult {
-  spec: any
-  selectionMode: string[]
-}
-
-export const useVegaSpecPreprocessor = (
+export const useVegaElementPreprocessor = (
   element: VegaLiteChartElement
-): VegaSpecPreprocessorResult => {
+): VegaLiteChartElement => {
   const theme = useTheme()
   const {
     expanded: isFullScreen,
@@ -156,12 +151,19 @@ export const useVegaSpecPreprocessor = (
   } = useRequiredContext(ElementFullscreenContext)
 
   const {
+    id,
+    formId,
     spec: inputSpec,
+    data,
+    datasets,
     useContainerWidth,
     vegaLiteTheme,
     selectionMode: inputSelectionMode,
   } = element
 
+  // Selection Mode is an array, so we want to update it only when the contents
+  // change, not the reference itself (since each forward message would be a new
+  // reference).
   const selectionMode = useMemo(() => {
     return inputSelectionMode as string[]
     // TODO: Update to match React best practices
@@ -193,5 +195,14 @@ export const useVegaSpecPreprocessor = (
     ]
   )
 
-  return { spec, selectionMode }
+  return {
+    id,
+    formId,
+    vegaLiteTheme,
+    spec,
+    selectionMode,
+    data,
+    datasets,
+    useContainerWidth,
+  }
 }
