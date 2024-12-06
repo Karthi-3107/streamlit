@@ -46,7 +46,10 @@ new PerformanceObserver(handleEntries).observe({
 
 GET_CAPTURED_TRACES_SCRIPT = """
 for (const [key, value] of Object.entries(window.__streamlit_profiles__)) {
-    window.__capturedTraces[key] = value.buffer.filter(Boolean);
+    window.__capturedTraces[key] = {
+        entries: value.buffer.filter(Boolean),
+        totalWrittenEntries: value.totalWrittenEntries,
+    };
 }
 
 JSON.stringify(window.__capturedTraces)
