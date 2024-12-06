@@ -140,9 +140,14 @@ const generateSpec = (
   return spec
 }
 
+interface VegaSpecPreprocessorResult {
+  spec: any
+  selectionMode: string[]
+}
+
 export const useVegaSpecPreprocessor = (
   element: VegaLiteChartElement
-): any => {
+): VegaSpecPreprocessorResult => {
   const theme = useTheme()
   const {
     expanded: isFullScreen,
@@ -164,7 +169,7 @@ export const useVegaSpecPreprocessor = (
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(inputSelectionMode)])
 
-  return useMemo(
+  const spec = useMemo(
     () =>
       generateSpec(
         inputSpec,
@@ -187,4 +192,6 @@ export const useVegaSpecPreprocessor = (
       height,
     ]
   )
+
+  return { spec, selectionMode }
 }

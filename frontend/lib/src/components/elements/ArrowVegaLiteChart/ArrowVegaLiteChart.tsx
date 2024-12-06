@@ -14,7 +14,14 @@
  * limitations under the License.
  */
 
-import React, { FC, useEffect, useRef } from "react"
+import React, {
+  FC,
+  RefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react"
 
 import { Global } from "@emotion/react"
 
@@ -43,6 +50,11 @@ export interface Props {
   disableFullscreenMode?: boolean
 }
 
+enum RenderState {
+  PENDING,
+  RENDERED,
+}
+
 const ArrowVegaLiteChart: FC<Props> = ({
   disableFullscreenMode,
   element,
@@ -57,29 +69,38 @@ const ArrowVegaLiteChart: FC<Props> = ({
     collapse,
   } = useRequiredContext(ElementFullscreenContext)
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const processedSpec = useVegaSpecPreprocessor(element)
-  const { error, vegaView, createView, finalizeView } = useVegaEmbed(
-    containerRef,
-    element
+  const [renderedState, setRenderedState] = useState<RenderState>(
+    RenderState.PENDING
   )
+  const { spec, selectionMode } = useVegaSpecPreprocessor(element)
+  const { error, createView, finalizeView } = useVegaEmbed(element)
   const maybeConfigureSelections = useVegaLiteSelections(
     element,
     widgetMgr,
     fragmentId
   )
 
-  useEffect(() => {
-    createView(processedSpec, widgetMgr)
+  const setupView = useCallback(
+    async (containerRef: RefObject<HTMLDivElement>) => {
+      const vegaView = await createView(containerRef, spec, widgetMgr)
+      if (vegaView) {
+        maybeConfigureSelections(vegaView)
+      }
+    },
+    [spec, widgetMgr, selectionMode]
+  )
 
-    return finalizeView()
-    // The spec will change if the visual aspects change (width, height, theme)
-  }, [processedSpec, createView, finalizeView, widgetMgr])
+  const setContainerRef = useCallback(async (el: HTMLDivElement) => {
+    containerRef.current = el
+
+    setupView(containerRef)
+  }, [])
 
   useEffect(() => {
-    if (vegaView) {
-      maybeConfigureSelections(vegaView)
-    }
-  }, [vegaView, maybeConfigureSelections])
+    setupView(containerRef)
+
+    return finalizeView
+  }, [setupView, finalizeView])
 
   if (error) {
     throw error
@@ -107,7 +128,7 @@ const ArrowVegaLiteChart: FC<Props> = ({
         className="stVegaLiteChart"
         useContainerWidth={element.useContainerWidth}
         isFullScreen={isFullScreen}
-        ref={containerRef}
+        ref={setContainerRef}
       />
     </StyledToolbarElementContainer>
   )
