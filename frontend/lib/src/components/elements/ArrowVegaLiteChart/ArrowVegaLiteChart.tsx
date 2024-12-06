@@ -88,15 +88,16 @@ const ArrowVegaLiteChart: FC<Props> = ({
 
   // Once we receive the element for the container, we can render the vega chart
   const setContainerRef = useCallback(
-    async (el: HTMLDivElement) => {
+    (el: HTMLDivElement | null) => {
       containerRef.current = el
 
-      setupView()
+      if (containerRef.current) {
+        setupView()
+      }
     },
     [setupView]
   )
 
-  // If ever the view changes, or the component unmounts, we want to finalize the view
   useEffect(() => {
     if (containerRef.current) {
       setupView()

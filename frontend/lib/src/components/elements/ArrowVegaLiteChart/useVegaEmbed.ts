@@ -38,35 +38,25 @@ import {
 
 const DEFAULT_DATA_NAME = "source"
 
-enum ChangeState {
-  NO_CHANGE,
-  REMOVED,
-  EXTENDED,
-  ADDED,
-  DIFFERENT_DATA,
-}
-
-function classifyDataChange(
+function hasDataChanged(
   prevData: Quiver | null,
   data: Quiver | null
-): ChangeState {
-  if (!data || data.data.numRows === 0) {
-    // The new data is empty, so we remove the dataset from the
-    // chart view if the named dataset exists.
-    return ChangeState.REMOVED
+): boolean {
+  // Short-circuit if the data is the same object (or both null)
+  if (prevData === data) {
+    return false
   }
 
-  if (!prevData || prevData.data.numRows === 0) {
-    // The previous data was empty, so we just insert the new data.
-    return ChangeState.ADDED
+  // One might be null, so we should check for that.
+  if (prevData === null || data === null) {
+    return true
   }
 
   const { dataRows: prevNumRows, dataColumns: prevNumCols } =
     prevData.dimensions
   const { dataRows: numRows, dataColumns: numCols } = data.dimensions
 
-  // Check if dataframes have same "shape" but the new one has more rows.
-  if (
+  return (
     dataIsAnAppendOfPrev(
       prevData,
       prevNumRows,
@@ -74,22 +64,12 @@ function classifyDataChange(
       data,
       numRows,
       numCols
-    )
-  ) {
-    if (prevNumRows < numRows) {
-      // Insert the new rows.
-      return ChangeState.EXTENDED
-    }
-
-    return ChangeState.NO_CHANGE
-  }
-
-  return ChangeState.DIFFERENT_DATA
+    ) && prevNumRows === numRows
+  )
 }
 
 interface UseVegaEmbedOutput {
   error: Error | null
-  vegaView: VegaView | null
   createView: (
     containerRef: RefObject<HTMLDivElement>,
     spec: any,
@@ -116,6 +96,15 @@ export function useVegaEmbed(
   // to trigger a change in the first render.
   const prevData = useRef<Quiver | null>(data)
   const prevDatasets = useRef<WrappedNamedDataset[]>(datasets)
+
+  // We use state to store the data and datasets, so that we can trigger
+  // a render when we confirm that the data has changed.
+  useEffect(() => {
+    if (hasDataChanged(prevData.current, inputData)) {
+      setData(inputData)
+      setDatasets(inputDatasets)
+    }
+  }, [inputData, inputDatasets])
 
   const finalizeView = useCallback(() => {
     if (vegaFinalizer.current) {
@@ -213,17 +202,6 @@ export function useVegaEmbed(
     [chartId, finalizeView, datasets, data]
   )
 
-  // We use state to store the data and datasets, so that we can trigger
-  // a render when we confirm that the data has changed.
-  useEffect(() => {
-    if (
-      classifyDataChange(prevData.current, inputData) !== ChangeState.NO_CHANGE
-    ) {
-      setData(inputData)
-      setDatasets(inputDatasets)
-    }
-  }, [inputData, inputDatasets])
-
   const updateData = useCallback(
     (name: string, prevData: Quiver | null, data: Quiver | null): void => {
       if (!vegaView.current) {
@@ -310,5 +288,5 @@ export function useVegaEmbed(
     prevDatasets.current = datasets
   }, [data, datasets, updateData])
 
-  return { error, vegaView: vegaView.current, createView, finalizeView }
+  return { error, createView, finalizeView }
 }
