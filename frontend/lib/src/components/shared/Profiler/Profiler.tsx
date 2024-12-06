@@ -28,6 +28,12 @@ export type ProfilerProps = PropsWithChildren<{
   id: string
 }>
 
+/**
+ * Programmatic profiler component that collects performance data from React
+ * Profiler. Since the Profiling build of React is not used in production, this
+ * component is only doing something meaningful in tests. Otherwise it is
+ * effectively a no-op since the callback will never be called.
+ */
 export const Profiler: FC<ProfilerProps> = ({ id, children }) => {
   const handleRender = useCallback<ProfilerOnRenderCallback>(
     (id, phase, actualDuration, baseDuration, startTime, commitTime) => {
