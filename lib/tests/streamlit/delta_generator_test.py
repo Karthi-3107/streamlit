@@ -102,6 +102,8 @@ class RunWarningTest(unittest.TestCase):
             "experimental_dialog",
             "echo",
             "logo",
+            "login",
+            "logout",
         }
 
         # Add public commands that only exist in the delta generator:

@@ -156,8 +156,8 @@ class UserInfoAuthTest(DeltaGeneratorTestCase):
 
     @parameterized.expand(["google", "microsoft", "auth0"])
     def test_user_login(self, provider):
-        """Test that st.experimental_user.login sends correct proto message."""
-        st.experimental_user.login(provider)
+        """Test that st.login sends correct proto message."""
+        st.login(provider)
 
         c = self.get_message_from_queue().auth_redirect
 
@@ -170,9 +170,9 @@ class UserInfoAuthTest(DeltaGeneratorTestCase):
         assert parsed_payload["provider"] == provider
 
     def test_user_login_with_invalid_provider(self):
-        """Test that st.experimental_user.login raise exception for invalid provider."""
+        """Test that st.login raise exception for invalid provider."""
         with self.assertRaises(AuthError) as ex:
-            st.experimental_user.login("invalid_provider")
+            st.login("invalid_provider")
 
         assert "Auth credentials are missing *'invalid_provider'*" in str(ex.exception)
 
@@ -186,7 +186,7 @@ class UserInfoAuthTest(DeltaGeneratorTestCase):
             ),
         ):
             with self.assertRaises(AuthError) as ex:
-                st.experimental_user.login("google")
+                st.login("google")
 
             assert (
                 "Auth credentials are missing 'redirect_uri'. Please check your configuration."
@@ -208,7 +208,7 @@ class UserInfoAuthTest(DeltaGeneratorTestCase):
             ),
         ):
             with self.assertRaises(AuthError) as ex:
-                st.experimental_user.login("google")
+                st.login("google")
 
             assert (
                 "Auth credentials for 'google' are missing the following keys: ['client_id', 'client_secret', 'server_metadata_url']. Please check your configuration."
@@ -216,8 +216,8 @@ class UserInfoAuthTest(DeltaGeneratorTestCase):
             )
 
     def test_user_logout(self):
-        """Test that st.experimental_user.logout sends correct proto message."""
-        st.experimental_user.logout()
+        """Test that st.logout sends correct proto message."""
+        st.logout()
 
         c = self.get_message_from_queue().auth_redirect
 

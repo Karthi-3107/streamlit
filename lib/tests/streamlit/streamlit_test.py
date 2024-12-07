@@ -59,6 +59,8 @@ NON_ELEMENT_COMMANDS: set[str] = {
     "experimental_user",
     "fragment",
     "get_option",
+    "login",
+    "logout",
     "navigation",
     "query_params",
     "rerun",

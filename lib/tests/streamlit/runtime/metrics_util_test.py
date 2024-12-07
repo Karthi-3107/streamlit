@@ -278,6 +278,8 @@ class PageTelemetryTest(DeltaGeneratorTestCase):
             "spinner",
             "progress",
             "context",
+            "login",
+            "logout",
         }
 
         # Create a list of all public API names in the `st` module (minus

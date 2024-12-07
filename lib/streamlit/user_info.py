@@ -41,6 +41,43 @@ AUTH_LOGIN_ENDPOINT: Final = "/auth/login"
 AUTH_LOGOUT_ENDPOINT: Final = "/auth/logout"
 
 
+@gather_metrics("login")
+def login(provider: str) -> None:
+    """Initiate the login for the given provider.
+
+    Parameters
+    ----------
+    provider : str
+        The provider to use for login. This value must match the name of a
+        provider configured in the app's auth section of ``secrets.toml`` file.
+    """
+    context = _get_script_run_ctx()
+    if context is not None:
+        validate_auth_credentials(provider)
+        fwd_msg = ForwardMsg()
+        fwd_msg.auth_redirect.url = generate_login_redirect_url(provider)
+        context.enqueue(fwd_msg)
+
+
+@gather_metrics("logout")
+def logout() -> None:
+    """Logout the current user."""
+    context = _get_script_run_ctx()
+    if context is not None:
+        context.user_info.clear()
+        session_id = context.session_id
+
+        if runtime.exists():
+            instance = runtime.get_instance()
+            instance.clear_user_info_for_session(session_id)
+
+        base_path = config.get_option("server.baseUrlPath")
+
+        fwd_msg = ForwardMsg()
+        fwd_msg.auth_redirect.url = make_url_path(base_path, AUTH_LOGOUT_ENDPOINT)
+        context.enqueue(fwd_msg)
+
+
 def generate_login_redirect_url(provider: str) -> str:
     """Generate the login redirect URL for the given provider."""
     provider_token = encode_provider_token(provider)
@@ -86,43 +123,7 @@ class UserInfoProxy(Mapping[str, Union[str, None]]):
 
     """
 
-    @gather_metrics("login")
-    def login(self, provider: str) -> None:
-        """Initiate the login for the given provider.
-
-        Parameters
-        ----------
-        provider : str
-            The provider to use for login. This value must match the name of a
-            provider configured in the app's auth section of ``secrets.toml`` file.
-        """
-        context = _get_script_run_ctx()
-        if context is not None:
-            validate_auth_credentials(provider)
-            fwd_msg = ForwardMsg()
-            fwd_msg.auth_redirect.url = generate_login_redirect_url(provider)
-            context.enqueue(fwd_msg)
-
-    @gather_metrics("logout")
-    def logout(self) -> None:
-        """Logout the current user."""
-        context = _get_script_run_ctx()
-        if context is not None:
-            context.user_info.clear()
-            session_id = context.session_id
-
-            if runtime.exists():
-                instance = runtime.get_instance()
-                instance.clear_user_info_for_session(session_id)
-
-            base_path = config.get_option("server.baseUrlPath")
-
-            fwd_msg = ForwardMsg()
-            fwd_msg.auth_redirect.url = make_url_path(base_path, AUTH_LOGOUT_ENDPOINT)
-            context.enqueue(fwd_msg)
-
-    def is_logged_in(self) -> bool:
-        """Check if the user is logged in."""
+    def __bool__(self):
         user_email = _get_user_info().get("email")
         return user_email is not None and user_email != "test@example.com"
 
