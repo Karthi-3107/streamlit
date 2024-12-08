@@ -62,3 +62,10 @@ st.link_button(
     type="tertiary",
     disabled=True,
 )
+
+st.link_button(
+    "Tertiary link button with container width",
+    url="https://streamlit.io",
+    type="tertiary",
+    use_container_width=True,
+)
