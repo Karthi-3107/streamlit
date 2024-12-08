@@ -1,0 +1,42 @@
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+
+# Load or initialize data
+try:
+    data = pd.read_csv("transactions.csv")
+except FileNotFoundError:
+    data = pd.DataFrame(columns=["Date", "Category", "Description", "Amount", "Type"])
+
+# Sidebar for input
+st.sidebar.header("Add Transaction")
+date = st.sidebar.date_input("Date")
+category = st.sidebar.text_input("Category")
+description = st.sidebar.text_input("Description")
+amount = st.sidebar.number_input("Amount", min_value=0.0, step=0.01)
+type_ = st.sidebar.selectbox("Type", ["Income", "Expense"])
+
+if st.sidebar.button("Add Transaction"):
+    new_data = pd.DataFrame([[date, category, description, amount, type_]],
+                            columns=["Date", "Category", "Description", "Amount", "Type"])
+    data = pd.concat([data, new_data], ignore_index=True)
+    data.to_csv("transactions.csv", index=False)
+    st.sidebar.success("Transaction added!")
+
+# Main content
+st.title("Income and Expenses Tracker")
+st.dataframe(data)
+
+# Summary
+total_income = data[data["Type"] == "Income"]["Amount"].sum()
+total_expenses = data[data["Type"] == "Expense"]["Amount"].sum()
+net_balance = total_income - total_expenses
+
+st.subheader("Summary")
+st.metric("Total Income", f"${total_income:.2f}")
+st.metric("Total Expenses", f"${total_expenses:.2f}")
+st.metric("Net Balance", f"${net_balance:.2f}")
+
+# Charts
+fig = px.bar(data, x="Category", y="Amount", color="Type", title="Income vs Expenses")
+st.plotly_chart(fig)
