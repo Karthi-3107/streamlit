@@ -46,11 +46,11 @@ def test_link_button_hover(themed_app: Page, assert_snapshot: ImageCompareFuncti
     expect(link_elements).to_have_count(LINK_BUTTON_ELEMENTS)
 
     default_link_button = themed_app.get_by_test_id("stLinkButton").nth(0)
-    themed_app.get_by_text("the label").hover()
+    themed_app.get_by_text("Default Link").hover()
     assert_snapshot(default_link_button, name="st_link_button-default_hover")
 
     primary_link_button = themed_app.get_by_test_id("stLinkButton").nth(2)
-    themed_app.get_by_text("primary").hover()
+    themed_app.get_by_text("Primary Link").hover()
     assert_snapshot(primary_link_button, name="st_link_button-primary_hover")
 
     tertiary_link_button = themed_app.get_by_test_id("stLinkButton").nth(8)
